@@ -51,9 +51,7 @@ function Module:OnInitialize()
         button1 = OKAY,
         button2 = CANCEL,
         hasEditBox = true,
-        OnShow = function (dialog, data)
-            dialog.editBox:SetText(data.displayName);
-            dialog.editBox:HighlightText();
+        OnShow = function (dialog)
             dialog.editBox:SetScript("OnEscapePressed", function()
                 dialog:Hide();
             end);
