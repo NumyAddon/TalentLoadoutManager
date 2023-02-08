@@ -6,8 +6,10 @@
 ## X-Curse-Project-ID: 821821
 ## SavedVariables: TalentLoadoutManagerDB
 ## SavedVariablesPerCharacter: TalentLoadoutManagerCharDB
+## OptionalDeps: TalentTreeTweaks
 
 libs\embeds.xml
 
 TalentLoadoutManager.lua
+config.lua
 sidebar.lua

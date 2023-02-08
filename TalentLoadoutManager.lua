@@ -1,7 +1,7 @@
 local addonName, ns = ...;
 
 --- @class TalentLoadoutManager
-local TLM = LibStub("AceAddon-3.0"):NewAddon(addonName, "AceConsole-3.0", "AceEvent-3.0");
+local TLM = LibStub("AceAddon-3.0"):NewAddon(addonName, "AceConsole-3.0", "AceEvent-3.0", "AceHook-3.0");
 ns.TLM = TLM;
 
 local SERIALIZATION_NODE_SEPARATOR = "\n";
@@ -21,7 +21,7 @@ TLM.Event = {
     --LoadoutCreated = "LoadoutCreated", -- todo?
     --- payload: classID, specID, loadoutID
     --LoadoutDeleted = "LoadoutDeleted", -- todo?
-    --- payload: classID, specID, loadoutID, loadoutInfo
+    --- payload: classID, specID, loadoutID, loadoutInfo - loadoutID is either configID or customLoadoutID
     LoadoutUpdated = "LoadoutUpdated",
     --- payload: <none>
     LoadoutListUpdated = "LoadoutListUpdated",
@@ -63,6 +63,12 @@ function TLM:OnInitialize()
         blizzardLoadouts = {},
         customLoadouts = {},
         customLoadoutAutoIncrement = 1,
+        config = {},
+    };
+    local defaultConfig = {
+        autoScale = true,
+        autoPosition = true,
+        autoApply = true,
     };
 
     for key, value in pairs(defaults) do
@@ -70,6 +76,15 @@ function TLM:OnInitialize()
             self.db[key] = value;
         end
     end
+    for key, value in pairs(defaultConfig) do
+        if self.db.config[key] == nil then
+            self.db.config[key] = value;
+        end
+    end
+
+    ns.Config:Initialize();
+    self:RegisterChatCommand('tlm', function() ns.Config:OpenConfig() end)
+    self:RegisterChatCommand('talentloadoutmanager', function() ns.Config:OpenConfig() end)
 
     self.charDb.customLoadoutConfigID = self.charDb.customLoadoutConfigID or {};
     self.charDb.selectedCustomLoadoutID = self.charDb.selectedCustomLoadoutID or {};
@@ -88,6 +103,7 @@ function TLM:SPELLS_CHANGED()
     self:RegisterEvent("TRAIT_CONFIG_UPDATED");
     self:RegisterEvent("TRAIT_CONFIG_DELETED");
     self:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED");
+    self:SecureHook(C_ClassTalents, "CommitConfig", "OnCommitConfig");
 end
 
 function TLM:TRAIT_CONFIG_UPDATED()
@@ -131,6 +147,13 @@ function TLM:TRAIT_CONFIG_DELETED(_, configID)
 
     if self.charDb.customLoadoutConfigID[specID] == configID then
         self.charDb.customLoadoutConfigID[specID] = nil;
+    end
+end
+
+function TLM:OnCommitConfig(targetConfigID)
+    if targetConfigID == self.charDb.customLoadoutConfigID[self.playerSpecID] then
+        local selectedNodes = self:SerializeLoadout(C_ClassTalents.GetActiveConfigID());
+        self:UpdateCustomLoadout(self.charDb.selectedCustomLoadoutID[self.playerSpecID], selectedNodes);
     end
 end
 
@@ -250,6 +273,19 @@ function TLM:UpdateBlizzardLoadout(configID)
     end
 end
 
+function TLM:UpdateCustomLoadout(customLoadoutID, selectedNodes, classIDOrNil, specIDOrNil)
+    local classID = tonumber(classIDOrNil) or self.playerClassID;
+    local specID = tonumber(specIDOrNil) or self.playerSpecID;
+    local loadoutInfo = self.db.customLoadouts[classID]
+    and self.db.customLoadouts[classID][specID]
+    and self.db.customLoadouts[classID][specID][customLoadoutID];
+
+    if loadoutInfo then
+        loadoutInfo.selectedNodes = selectedNodes;
+        self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, customLoadoutID, loadoutInfo);
+    end
+end
+
 --- @param configID number
 --- @return string serialized loadout
 function TLM:SerializeLoadout(configID)
@@ -263,7 +299,8 @@ function TLM:SerializeLoadout(configID)
     local nodes = C_Traits.GetTreeNodes(treeID);
     for _, nodeID in pairs(nodes) do
         local nodeInfo = C_Traits.GetNodeInfo(configID, nodeID);
-        for _, entryID in pairs(nodeInfo.entryIDsWithCommittedRanks) do
+        local entryID = nodeInfo.activeEntry and nodeInfo.activeEntry.entryID;
+        if entryID and nodeInfo.ranksPurchased > 0 then
             local entryInfo = C_Traits.GetEntryInfo(configID, entryID);
             if entryInfo and entryInfo.definitionID then
                 local definitionInfo = C_Traits.GetDefinitionInfo(entryInfo.definitionID);
@@ -429,7 +466,7 @@ function TLM:GetLoadouts(classIDOrNil, specIDOrNil)
 end
 
 --- @param loadoutInfo TalentLoadoutManager_LoadoutInfo
-function TLM:ApplyCustomLoadout(loadoutInfo)
+function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
     --------------------------------------------------------------------------------------------
     ---
     --- plan A:
@@ -497,7 +534,7 @@ function TLM:ApplyCustomLoadout(loadoutInfo)
         self:Print("Failed to fully apply loadout. " .. entriesCount .. " entries could not be purchased.");
     end
 
-    if C_Traits.ConfigHasStagedChanges(activeConfigID) and not C_ClassTalents.CommitConfig(targetConfigID) then
+    if autoApply and C_Traits.ConfigHasStagedChanges(activeConfigID) and not C_ClassTalents.CommitConfig(targetConfigID) then
         self:Print("Failed to commit loadout.");
         return false;
     end
@@ -554,7 +591,7 @@ function TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specI
     return newLoadoutInfo;
 end
 
-function TLM:CreateCustomLoadoutFromImportString(importString, name, classIDOrNil, specIDOrNil)
+function TLM:CreateCustomLoadoutFromImportString(importString, autoApply, name, classIDOrNil, specIDOrNil)
     local selectedNodes, errorOrNil = self:BuildSerializedSelectedNodesFromImportString(importString, classIDOrNil, specIDOrNil);
     if selectedNodes then
         local loadoutInfo = {
@@ -562,7 +599,7 @@ function TLM:CreateCustomLoadoutFromImportString(importString, name, classIDOrNi
             selectedNodes = selectedNodes,
         }
         loadoutInfo = self:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specIDOrNil);
-        self:ApplyCustomLoadout(loadoutInfo);
+        self:ApplyCustomLoadout(loadoutInfo, autoApply);
 
         return loadoutInfo;
     end

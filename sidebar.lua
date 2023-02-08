@@ -148,8 +148,42 @@ function Module:SetupHook()
     TLM:RegisterCallback(TLM.Event.CustomLoadoutApplied, self.RefreshSideBarData, self);
 end
 
-function Module:OnTalentsTabShow()
+function Module:OnTalentsTabShow(frame)
+    self:UpdateScaleForFit(frame:GetParent());
+    self:UpdatePosition(frame:GetParent());
     self:RefreshSideBarData();
+end
+
+function Module:UpdateScaleForFit(frame)
+    if not TLM.db.config.autoScale then return end
+
+    local extraHeight = 270;
+    local extraWidth = 200 + (self.SideBar:GetWidth() * 1.5);
+
+    local horizRatio = UIParent:GetWidth() / GetUIPanelWidth(frame, extraWidth);
+    local vertRatio = UIParent:GetHeight() / GetUIPanelHeight(frame, extraHeight);
+
+    frame:SetScale(min(horizRatio, vertRatio, 1));
+end
+
+function Module:UpdatePosition(frame)
+    if not TLM.db.config.autoPosition then return end
+
+    local replacePoint = true;
+    local yOfs = -41;
+    if frame:GetNumPoints() > 0 then
+        local point, relativeTo, relativePoint, xOfs;
+        point, relativeTo, relativePoint, xOfs, yOfs = frame:GetPoint(1);
+        replacePoint = false;
+        if point == "TOP" and relativeTo == UIParent and relativePoint == "TOP" and xOfs == 0 then
+            replacePoint = true;
+        end
+    end
+
+    if replacePoint then
+        frame:ClearAllPoints();
+        frame:SetPoint("TOP", UIParent, "TOP", self.SideBar:GetWidth() / 2, yOfs);
+    end
 end
 
 function Module:CreateImportDialog()
@@ -194,6 +228,27 @@ function Module:CreateImportDialog()
     nameControl:OnLoad();
     nameControl:SetScript("OnShow", nameControl.OnShow);
 
+    --- autoApply checkbox
+    dialog.AutoApplyCheckbox = CreateFrame('CheckButton', nil, dialog, 'UICheckButtonTemplate');
+    local checkbox = dialog.AutoApplyCheckbox;
+    local text = string.format('Automatically Apply the loadout on import');
+    checkbox:SetPoint('TOPLEFT', dialog.NameControl, 'BOTTOMLEFT', 0, 5);
+    checkbox:SetSize(24, 24);
+    checkbox:SetScript('OnClick', function(cb) self:OnCheckboxClick(cb); end);
+    checkbox:SetScript('OnEnter', function(cb)
+        GameTooltip:SetOwner(cb, 'ANCHOR_RIGHT');
+        GameTooltip:SetText(text);
+        GameTooltip:AddLine('If checked, the imported build will be imported into the currently selected loadout.', 1, 1, 1);
+        GameTooltip:Show();
+    end);
+    checkbox:SetScript('OnLeave', function()
+        GameTooltip:Hide();
+    end);
+    checkbox.text = checkbox:CreateFontString(nil, 'ARTWORK', 'GameFontNormal');
+    checkbox.text:SetPoint('LEFT', checkbox, 'RIGHT', 0, 1);
+    checkbox.text:SetText(text);
+    checkbox:SetHitRectInsets(-10, -checkbox.text:GetStringWidth(), -5, 0);
+
     --- accept button
     dialog.AcceptButton = CreateFrame("Button", nil, dialog, "ClassTalentLoadoutDialogButtonTemplate");
     local acceptButton = dialog.AcceptButton;
@@ -211,7 +266,8 @@ function Module:CreateImportDialog()
         if self.AcceptButton:IsEnabled() then
             local importText = self.ImportControl:GetText();
             local loadoutName = self.NameControl:GetText();
-            local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, loadoutName);
+            local autoApply = self.AutoApplyCheckbox:GetChecked();
+            local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, autoApply, loadoutName);
 
             if newLoadoutInfo then
                 StaticPopupSpecial_Hide(self);
@@ -222,7 +278,9 @@ function Module:CreateImportDialog()
     end
 
     dialog:OnLoad();
-    dialog:SetScript("OnShow", dialog.OnShow);
+    dialog:SetScript("OnShow", function()
+        dialog.AutoApplyCheckbox:SetChecked(TLM.db.config.autoApply);
+    end);
     dialog:SetScript("OnHide", dialog.OnHide);
 
     return dialog;
@@ -239,7 +297,7 @@ function Module:CreateSideBar()
     -- add a background
     sideBar.Background = sideBar:CreateTexture(nil, "BACKGROUND");
     sideBar.Background:SetAllPoints();
-    sideBar.Background:SetColorTexture(0, 0, 0, 0.5);
+    sideBar.Background:SetColorTexture(0, 0, 0, 0.8);
 
     -- add a title
     sideBar.Title = sideBar:CreateFontString(nil, "OVERLAY", "GameFontNormal");
@@ -271,6 +329,25 @@ function Module:CreateSideBar()
     sideBar.ScrollBox, dataProvider = self:CreateScrollBox(sideBar);
     sideBar.ScrollBox:SetPoint("TOPLEFT", sideBar.CreateButton, "BOTTOMLEFT", 0, -10);
     sideBar.ScrollBox:SetPoint("BOTTOMRIGHT", sideBar, "BOTTOMRIGHT", -10, 10);
+
+    if not IsAddOnLoaded('TalentTreeTweaks') then
+        -- add a link to the addon
+        sideBar.WarningLink = CreateFrame("Button", nil, sideBar, "UIPanelButtonTemplate, UIButtonTemplate");
+        sideBar.WarningLink:SetSize(width - 50, 20);
+        sideBar.WarningLink:SetText("Download TalentTreeTweaks");
+        sideBar.WarningLink:SetPoint("BOTTOMLEFT", sideBar, "BOTTOMLEFT", 10, 10);
+        sideBar.WarningLink:SetScript("OnClick", function()
+            local url = "https://www.curseforge.com/wow/addons/talent-tree-tweaks";
+            StaticPopup_Show(self.copyDialogName, nil, nil, url);
+        end);
+
+        -- add a warning on the bottom of the sidebar
+        sideBar.Warning = sideBar:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge");
+        sideBar.Warning:SetPoint("BOTTOMLEFT", sideBar.WarningLink, "TOPLEFT", 0, 0);
+        sideBar.Warning:SetWidth(width - 50);
+        sideBar.Warning:SetText("TalentTreeTweaks is not loaded. You might encounter serious bugs without it.");
+        sideBar.Warning:SetTextColor(1, 0.5, 0.5);
+    end
 
     return sideBar, dataProvider;
 end
@@ -321,7 +398,11 @@ function Module:CreateScrollBox(parentContainer)
         frame:SetScript("OnEnter", function()
             GameTooltip:SetOwner(frame, "ANCHOR_RIGHT");
             GameTooltip:SetText(elementData.text);
-            GameTooltip:AddLine("Left-Click to load this loadout", 1, 1, 1);
+            local defaultAction =
+                elementData.data.isBlizzardLoadout and "load & apply"
+                or TLM.db.config.autoApply and "load & apply"
+                or "load";
+            GameTooltip:AddLine(string.format("Left-Click to %s this loadout", defaultAction), 1, 1, 1);
             GameTooltip:AddLine("Right-Click for options", 1, 1, 1);
             GameTooltip:Show();
 
@@ -371,7 +452,16 @@ function Module:OpenDropDownMenu(dropDown, frame, elementData)
             text = "Load",
             notCheckable = true,
             func = function()
-                self:OnElementClick(elementData);
+                local forceApply = false;
+                self:OnElementClick(elementData, forceApply);
+            end,
+        },
+        {
+            text = "Load & Apply",
+            notCheckable = true,
+            func = function()
+                local forceApply = true;
+                self:OnElementClick(elementData, forceApply);
             end,
         },
         {
@@ -410,8 +500,12 @@ function Module:OpenDropDownMenu(dropDown, frame, elementData)
     LibDD:EasyMenu(self.menuList, dropDown, frame, 80, 0);
 end
 
-function Module:OnElementClick(elementData)
+function Module:OnElementClick(elementData, forceApply)
+    if forceApply == nil then forceApply = TLM.db.config.autoApply end
+    local autoApply = forceApply;
+
     if elementData.playerIsOwner and elementData.isBlizzardLoadout then
+        -- autoApply is not supported for blizzard loadouts (yet)
         TLM:ApplyBlizzardLoadout(elementData.id);
         return;
     end
@@ -421,7 +515,7 @@ function Module:OnElementClick(elementData)
         loadoutInfo = TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo);
     end
 
-    TLM:ApplyCustomLoadout(loadoutInfo);
+    TLM:ApplyCustomLoadout(loadoutInfo, autoApply);
 end
 
 function Module:OnElementRightClick(frame, elementData)
