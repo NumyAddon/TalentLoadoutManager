@@ -103,7 +103,8 @@ function TLM:SPELLS_CHANGED()
     self:RegisterEvent("TRAIT_CONFIG_UPDATED");
     self:RegisterEvent("TRAIT_CONFIG_DELETED");
     self:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED");
-    self:SecureHook(C_ClassTalents, "CommitConfig", "OnCommitConfig");
+    -- temporarily disabled until I fix the issues with it
+    --self:SecureHook(C_ClassTalents, "CommitConfig", "OnCommitConfig");
 end
 
 function TLM:TRAIT_CONFIG_UPDATED()
