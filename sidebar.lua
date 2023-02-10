@@ -399,7 +399,7 @@ function Module:CreateScrollBox(parentContainer)
             GameTooltip:SetOwner(frame, "ANCHOR_RIGHT");
             GameTooltip:SetText(elementData.text);
             local defaultAction =
-                elementData.data.isBlizzardLoadout and "load & apply"
+                (elementData.data.playerIsOwner and elementData.data.isBlizzardLoadout) and "load & apply"
                 or TLM.db.config.autoApply and "load & apply"
                 or "load";
             GameTooltip:AddLine(string.format("Left-Click to %s this loadout", defaultAction), 1, 1, 1);
@@ -451,6 +451,7 @@ function Module:OpenDropDownMenu(dropDown, frame, elementData)
         {
             text = "Load",
             notCheckable = true,
+            disabled = elementData.playerIsOwner and elementData.isBlizzardLoadout,
             func = function()
                 local forceApply = false;
                 self:OnElementClick(elementData, forceApply);
@@ -462,6 +463,15 @@ function Module:OpenDropDownMenu(dropDown, frame, elementData)
             func = function()
                 local forceApply = true;
                 self:OnElementClick(elementData, forceApply);
+            end,
+        },
+        {
+            text = "Save current talents into loadout",
+            notCheckable = true,
+            disabled = elementData.isBlizzardLoadout,
+            func = function()
+                local selectedNodes = TLM:SerializeLoadout(C_ClassTalents.GetActiveConfigID());
+                TLM:UpdateCustomLoadout(elementData.loadoutInfo.id, selectedNodes);
             end,
         },
         {
