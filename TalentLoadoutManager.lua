@@ -8,8 +8,8 @@ local SERIALIZATION_NODE_SEPARATOR = "\n";
 --- format: nodeID_entryID_spellID_rank
 local SERIALIZATION_VALUE_SEPARATOR = "_";
 
---@debug@
 _G.TalentLoadoutManager = TLM;
+--@debug@
 if not _G.TLM then _G.TLM = TLM; end
 --@end-debug@
 
