@@ -8,8 +8,8 @@ local SERIALIZATION_NODE_SEPARATOR = "\n";
 --- format: nodeID_entryID_spellID_rank
 local SERIALIZATION_VALUE_SEPARATOR = "_";
 
-_G.TalentLoadoutManager = TLM;
 --@debug@
+_G.TalentLoadoutManager = TLM;
 if not _G.TLM then _G.TLM = TLM; end
 --@end-debug@
 
@@ -28,12 +28,14 @@ TLM.Event = {
 };
 
 --- @alias TalentLoadoutManager_LoadoutDisplayInfo
+--- @field id number|string  - custom loadouts are prefixed with "C_" to avoid collisions with blizzard loadouts
 --- @field displayName string
 --- @field loadoutInfo TalentLoadoutManager_LoadoutInfo
 --- @field owner string|nil
 --- @field playerIsOwner boolean
 --- @field isBlizzardLoadout boolean
---- @field id number|string  - custom loadouts are prefixed with "C_" to avoid collisions with blizzard loadouts
+--- @field classID number
+--- @field specID number
 
 --- @alias TalentLoadoutManager_LoadoutInfo
 --- @field name string
@@ -88,6 +90,7 @@ function TLM:OnInitialize()
 
     self.charDb.customLoadoutConfigID = self.charDb.customLoadoutConfigID or {};
     self.charDb.selectedCustomLoadoutID = self.charDb.selectedCustomLoadoutID or {};
+    self.loadoutByIDCache = {};
 
     self:RegisterEvent("SPELLS_CHANGED");
 end
@@ -98,13 +101,12 @@ function TLM:SPELLS_CHANGED()
     self.playerName = playerName .. "-" .. playerRealm;
     self.playerClassID = PlayerUtil.GetClassID();
     self.playerSpecID = PlayerUtil.GetCurrentSpecID();
+    self:RebuildLoadoutByIDCache();
     self:UpdateBlizzardLoadouts();
 
     self:RegisterEvent("TRAIT_CONFIG_UPDATED");
     self:RegisterEvent("TRAIT_CONFIG_DELETED");
     self:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED");
-    -- temporarily disabled until I fix the issues with it
-    --self:SecureHook(C_ClassTalents, "CommitConfig", "OnCommitConfig");
 end
 
 function TLM:TRAIT_CONFIG_UPDATED()
@@ -149,18 +151,58 @@ function TLM:TRAIT_CONFIG_DELETED(_, configID)
     if self.charDb.customLoadoutConfigID[specID] == configID then
         self.charDb.customLoadoutConfigID[specID] = nil;
     end
-end
 
-function TLM:OnCommitConfig(targetConfigID)
-    if targetConfigID == self.charDb.customLoadoutConfigID[self.playerSpecID] then
-        local selectedNodes = self:SerializeLoadout(C_ClassTalents.GetActiveConfigID());
-        self:UpdateCustomLoadout(self.charDb.selectedCustomLoadoutID[self.playerSpecID], selectedNodes);
-    end
+    self.loadoutByIDCache[configID] = nil;
 end
 
 function TLM:ACTIVE_PLAYER_SPECIALIZATION_CHANGED()
     self.playerSpecID = PlayerUtil.GetCurrentSpecID();
     self.spellNodeMap = nil;
+end
+
+function TLM:RebuildLoadoutByIDCache()
+    self.loadoutByIDCache = {};
+    for classID, specList in pairs(self.db.blizzardLoadouts) do
+        for specID, playerList in pairs(specList) do
+            for playerName, loadoutList in pairs(playerList) do
+                for configID, loadoutInfo in pairs(loadoutList) do
+                    local displayName = CreateAtlasMarkup("gmchat-icon-blizz", 16, 16) .. loadoutInfo.name;
+                    if playerName ~= self.playerName then
+                        displayName = displayName .. " (" .. playerName .. ")";
+                    end
+                    local displayInfo = {
+                        id = configID,
+                        displayName = displayName,
+                        loadoutInfo = loadoutInfo,
+                        owner = playerName,
+                        playerIsOwner = playerName == self.playerName,
+                        isBlizzardLoadout = true,
+                        classID = classID,
+                        specID = specID,
+                    };
+                    self.loadoutByIDCache[configID] = displayInfo;
+                end
+            end
+        end
+    end
+
+    for classID, specList in pairs(self.db.customLoadouts) do
+        for specID, loadoutList in pairs(specList) do
+            for loadoutID, loadoutInfo in pairs(loadoutList) do
+                local displayInfo = {
+                    id = loadoutID,
+                    displayName = loadoutInfo.name,
+                    loadoutInfo = loadoutInfo,
+                    owner = nil,
+                    playerIsOwner = true,
+                    isBlizzardLoadout = false,
+                    classID = classID,
+                    specID = specID,
+                };
+                self.loadoutByIDCache[loadoutID] = displayInfo;
+            end
+        end
+    end
 end
 
 function TLM:GetActiveBlizzardLoadoutConfigID()
@@ -239,6 +281,9 @@ function TLM:UpdateBlizzardLoadouts()
     local specID = self.playerSpecID;
     self.db.blizzardLoadouts[classID] = self.db.blizzardLoadouts[classID] or {};
     self.db.blizzardLoadouts[classID][specID] = self.db.blizzardLoadouts[classID][specID] or {};
+    for configID, _ in pairs(self.db.blizzardLoadouts[classID][specID][self.playerName]) do
+        self.loadoutByIDCache[configID] = nil;
+    end
     self.db.blizzardLoadouts[classID][specID][self.playerName] = {};
 
     local activeConfigID = C_ClassTalents.GetActiveConfigID();
@@ -268,7 +313,19 @@ function TLM:UpdateBlizzardLoadout(configID)
             id = configID,
         };
         self.db.blizzardLoadouts[classID][specID][self.playerName][configID] = loadoutInfo;
-        self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, configID, loadoutInfo);
+        local displayName = CreateAtlasMarkup("gmchat-icon-blizz", 16, 16) .. loadoutInfo.name;
+        local displayInfo = {
+            id = configID,
+            displayName = displayName,
+            loadoutInfo = loadoutInfo,
+            owner = self.playerName,
+            playerIsOwner = true,
+            isBlizzardLoadout = true,
+            classID = classID,
+            specID = specID,
+        };
+        self.loadoutByIDCache[configID] = displayInfo;
+        self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, configID, displayInfo);
     else
         self:Print("Failed to serialize loadout " .. configID);
     end
@@ -278,12 +335,23 @@ function TLM:UpdateCustomLoadout(customLoadoutID, selectedNodes, classIDOrNil, s
     local classID = tonumber(classIDOrNil) or self.playerClassID;
     local specID = tonumber(specIDOrNil) or self.playerSpecID;
     local loadoutInfo = self.db.customLoadouts[classID]
-    and self.db.customLoadouts[classID][specID]
-    and self.db.customLoadouts[classID][specID][customLoadoutID];
+        and self.db.customLoadouts[classID][specID]
+        and self.db.customLoadouts[classID][specID][customLoadoutID];
 
     if loadoutInfo then
         loadoutInfo.selectedNodes = selectedNodes;
-        self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, customLoadoutID, loadoutInfo);
+        local displayInfo = {
+            id = customLoadoutID,
+            displayName = loadoutInfo.name,
+            loadoutInfo = loadoutInfo,
+            owner = nil,
+            playerIsOwner = true,
+            isBlizzardLoadout = false,
+            classID = classID,
+            specID = specID,
+        }
+        self.loadoutByIDCache[customLoadoutID] = displayInfo;
+        self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, customLoadoutID, displayInfo);
     end
 end
 
@@ -402,9 +470,9 @@ end
 --- @param loadoutEntryInfo table
 --- @return number number of removed entries (due to successful purchases)
 function TLM:PurchaseLoadoutEntryInfo(configID, loadoutEntryInfo)
-    local removed = 0
+    local removed = 0;
     for i, nodeEntry in pairs(loadoutEntryInfo) do
-        local success = false
+        local success = false;
         if nodeEntry.selectionEntryID then
             success = C_Traits.SetSelection(configID, nodeEntry.nodeID, nodeEntry.selectionEntryID);
         elseif nodeEntry.ranksPurchased then
@@ -413,12 +481,37 @@ function TLM:PurchaseLoadoutEntryInfo(configID, loadoutEntryInfo)
             end
         end
         if success then
-            removed = removed + 1
-            loadoutEntryInfo[i] = nil
+            removed = removed + 1;
+            loadoutEntryInfo[i] = nil;
         end
     end
 
-    return removed
+    return removed;
+end
+
+--- @param loadoutID string|number
+--- @return TalentLoadoutManager_LoadoutDisplayInfo|nil
+function TLM:GetLoadoutByID(loadoutID)
+    local displayInfo = self.loadoutByIDCache[loadoutID];
+    if displayInfo then
+        displayInfo = Mixin({}, displayInfo);
+        displayInfo.isActive = self:GetActiveLoadoutID() == loadoutID;
+    end
+
+    return displayInfo;
+end
+
+--- @return TalentLoadoutManager_LoadoutDisplayInfo[] - list of all loadouts, isActive still refers to the current player only
+function TLM:GetAllLoadouts()
+    local loadouts = {};
+    local activeLoadoutID = self:GetActiveLoadoutID();
+    for loadoutID, displayInfo in pairs(self.loadoutByIDCache) do
+        displayInfo = Mixin({}, displayInfo);
+        displayInfo.isActive = activeLoadoutID == loadoutID;
+        table.insert(loadouts, displayInfo);
+    end
+
+    return loadouts;
 end
 
 --- @return TalentLoadoutManager_LoadoutDisplayInfo[] - list of loadouts
@@ -426,40 +519,18 @@ function TLM:GetLoadouts(classIDOrNil, specIDOrNil)
     local loadouts = {}
     local classID = tonumber(classIDOrNil) or self.playerClassID;
     local specID = tonumber(specIDOrNil) or self.playerSpecID;
-    local activeID = self:GetActiveLoadoutID();
 
     if self.db.blizzardLoadouts[classID] and self.db.blizzardLoadouts[classID][specID] then
-        for playerName, playerLoadouts in pairs(self.db.blizzardLoadouts[classID][specID]) do
-            for _, loadout in pairs(playerLoadouts) do
-                local displayName = CreateAtlasMarkup("gmchat-icon-blizz", 16, 16) .. loadout.name;
-                if playerName ~= self.playerName then
-                    displayName = displayName .. " (" .. playerName .. ")";
-                end
-                table.insert(loadouts, {
-                    displayName = displayName,
-                    loadoutInfo = loadout,
-                    owner = playerName,
-                    playerIsOwner = playerName == self.playerName,
-                    isBlizzardLoadout = true,
-                    id = loadout.id,
-                    isActive = loadout.id == activeID,
-                })
+        for _, playerLoadouts in pairs(self.db.blizzardLoadouts[classID][specID]) do
+            for loadoutID, _ in pairs(playerLoadouts) do
+                table.insert(loadouts, self:GetLoadoutByID(loadoutID));
             end
         end
     end
 
     if self.db.customLoadouts[classID] and self.db.customLoadouts[classID][specID] then
-        for _, loadout in pairs(self.db.customLoadouts[classID][specID]) do
-            local displayName = loadout.name;
-            table.insert(loadouts, {
-                displayName = displayName,
-                loadoutInfo = loadout,
-                owner = nil,
-                playerIsOwner = true,
-                isBlizzardLoadout = false,
-                id = loadout.id,
-                isActive = loadout.id == activeID,
-            })
+        for loadoutID, _ in pairs(self.db.customLoadouts[classID][specID]) do
+            table.insert(loadouts, self:GetLoadoutByID(loadoutID));
         end
     end
 
@@ -541,7 +612,17 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
     end
 
     self.charDb.selectedCustomLoadoutID[self.playerSpecID] = loadoutInfo.id;
-    self:TriggerEvent(self.Event.CustomLoadoutApplied, self.playerClassID, specID, loadoutInfo.id, loadoutInfo);
+    local displayInfo = {
+        id = loadoutInfo.id,
+        displayName = loadoutInfo.name,
+        loadoutInfo = loadoutInfo,
+        owner = nil,
+        playerIsOwner = true,
+        isBlizzardLoadout = false,
+        classID = self.playerClassID,
+        specID = self.playerSpecID,
+    }
+    self:TriggerEvent(self.Event.CustomLoadoutApplied, self.playerClassID, specID, loadoutInfo.id, displayInfo);
 
     return true;
 end
@@ -561,6 +642,7 @@ function TLM:ApplyCustomLoadoutByID(classIDOrNil, specIDOrNil, loadoutID)
 end
 
 function TLM:ApplyBlizzardLoadout(configID)
+    -- it should be possible to safely replace this with C_ClassTalents.LoadConfig in 10.0.7
     if not ClassTalentFrame then
         ClassTalentFrame_LoadUI();
     end
@@ -586,7 +668,18 @@ function TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specI
         selectedNodes = loadoutInfo.selectedNodes,
     }
     self.db.customLoadouts[classID][specID][id] = newLoadoutInfo;
-    self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, id, newLoadoutInfo);
+    local displayInfo = {
+        id = id,
+        displayName = newLoadoutInfo.name,
+        loadoutInfo = newLoadoutInfo,
+        owner = nil,
+        playerIsOwner = true,
+        isBlizzardLoadout = false,
+        classID = classID,
+        specID = specID,
+    }
+    self.loadoutByIDCache[id] = displayInfo;
+    self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, id, displayInfo);
     self:TriggerEvent(self.Event.LoadoutListUpdated);
 
     return newLoadoutInfo;
@@ -625,15 +718,38 @@ function TLM:RenameCustomLoadout(classIDOrNil, specIDOrNil, loadoutID, newName)
     assert(type(loadoutID) == "string" or type(loadoutID) == "number", "loadoutID must be a string or number");
 
     if self.db.customLoadouts[classID] and self.db.customLoadouts[classID][specID] and self.db.customLoadouts[classID][specID][loadoutID] then
-        self.db.customLoadouts[classID][specID][loadoutID].name = newName;
+        local loadoutInfo = self.db.customLoadouts[classID][specID][loadoutID];
+        loadoutInfo.name = newName;
 
-        self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, loadoutID, self.db.customLoadouts[classID][specID][loadoutID]);
+        local displayInfo = {
+            id = loadoutID,
+            displayName = loadoutInfo.name,
+            loadoutInfo = loadoutInfo,
+            owner = nil,
+            playerIsOwner = true,
+            isBlizzardLoadout = false,
+            classID = classID,
+            specID = specID,
+        }
+        self.loadoutByIDCache[loadoutID] = displayInfo;
+        self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, loadoutID, displayInfo);
         self:TriggerEvent(self.Event.LoadoutListUpdated);
 
         return true;
     end
 
     return false;
+end
+
+function TLM:RenameBlizzardLoadout(configID, newName)
+    if not C_ClassTalents.RenameConfig(configID, newName) then
+        return false;
+    end
+
+    self:UpdateBlizzardLoadout(configID);
+    self:TriggerEvent(self.Event.LoadoutListUpdated);
+
+    return true;
 end
 
 function TLM:DeleteCustomLoadout(classIDOrNil, specIDOrNil, loadoutID)
@@ -643,6 +759,7 @@ function TLM:DeleteCustomLoadout(classIDOrNil, specIDOrNil, loadoutID)
 
     if self.db.customLoadouts[classID] and self.db.customLoadouts[classID][specID] and self.db.customLoadouts[classID][specID][loadoutID] then
         self.db.customLoadouts[classID][specID][loadoutID] = nil;
+        self.loadoutByIDCache[loadoutID] = nil;
 
         --self:TriggerEvent(self.Event.LoadoutDeleted, classID, specID, loadoutID);
         self:TriggerEvent(self.Event.LoadoutListUpdated);
@@ -651,6 +768,29 @@ function TLM:DeleteCustomLoadout(classIDOrNil, specIDOrNil, loadoutID)
     end
 
     return false;
+end
+
+function TLM:DeleteBlizzardLoadout(configID)
+    local classID = self.playerClassID;
+    local specID = self.playerSpecID;
+
+    if not C_ClassTalents.DeleteConfig(configID) then
+        return false;
+    end
+
+    self.loadoutByIDCache[configID] = nil;
+    if
+        self.db.blizzardLoadouts[classID]
+        and self.db.blizzardLoadouts[classID][specID]
+        and self.db.blizzardLoadouts[classID][specID][self.playerName]
+        and self.db.blizzardLoadouts[classID][specID][self.playerName][configID]
+    then
+        self.db.blizzardLoadouts[classID][specID][self.playerName][configID] = nil;
+
+        self:TriggerEvent(self.Event.LoadoutListUpdated);
+    end
+
+    return true;
 end
 
 function TLM:ExportLoadoutToString(classIDOrNil, specIDOrNil, loadoutInfo)

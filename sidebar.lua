@@ -86,8 +86,11 @@ function Module:OnInitialize()
         button1 = OKAY,
         button2 = CANCEL,
         OnAccept = function(dialog, data)
-            local loadout = data.loadoutInfo;
-            TLM:DeleteCustomLoadout(nil, nil, loadout.id);
+            if data.isBlizzardLoadout then
+                TLM:DeleteBlizzardLoadout(data.id);
+            else
+                TLM:DeleteCustomLoadout(nil, nil, data.id);
+            end
             dialog:Hide();
         end,
         timeout = 0,
@@ -503,7 +506,7 @@ function Module:OpenDropDownMenu(dropDown, frame, elementData)
         {
             text = "Delete",
             notCheckable = true,
-            disabled = elementData.isBlizzardLoadout,
+            disabled = not elementData.playerIsOwner,
             func = function()
                 StaticPopup_Show(self.deleteDialogName, elementData.displayName, nil, elementData);
             end,
