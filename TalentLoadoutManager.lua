@@ -346,13 +346,13 @@ function TLM:DeserializeLoadout(serialized)
 end
 
 --- @return string|number|nil currently active (possibly custom) loadout ID, custom loadouts are prefixed with "C_"
-function TLM:GetActiveLoadout()
+function TLM:GetActiveLoadoutID()
     local activeLoadoutConfigID = self:GetActiveBlizzardLoadoutConfigID();
     local customLoadoutConfigID = self.charDb.customLoadoutConfigID[self.playerSpecID];
-    local customLoadout = self.charDb.selectedCustomLoadoutID[self.playerSpecID];
+    local customLoadoutID = self.charDb.selectedCustomLoadoutID[self.playerSpecID];
 
-    if activeLoadoutConfigID == customLoadoutConfigID and customLoadout then
-        return customLoadout;
+    if activeLoadoutConfigID == customLoadoutConfigID and customLoadoutID then
+        return customLoadoutID;
     end
 
     return activeLoadoutConfigID;
@@ -426,7 +426,7 @@ function TLM:GetLoadouts(classIDOrNil, specIDOrNil)
     local loadouts = {}
     local classID = tonumber(classIDOrNil) or self.playerClassID;
     local specID = tonumber(specIDOrNil) or self.playerSpecID;
-    local activeID = self:GetActiveLoadout();
+    local activeID = self:GetActiveLoadoutID();
 
     if self.db.blizzardLoadouts[classID] and self.db.blizzardLoadouts[classID][specID] then
         for playerName, playerLoadouts in pairs(self.db.blizzardLoadouts[classID][specID]) do

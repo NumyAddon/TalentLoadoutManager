@@ -9,6 +9,9 @@ TLM.SideBarModule = Module;
 --- @type LibUIDropDownMenu
 local LibDD = LibStub:GetLibrary("LibUIDropDownMenu-4.0");
 
+--- @type TalentLoadoutManagerConfig
+local Config = ns.Config;
+
 function Module:OnInitialize()
     self.renameDialogName = "TalentLoadoutManager_SideBar_RenameLoadout";
     StaticPopupDialogs[self.renameDialogName] = {
@@ -155,7 +158,7 @@ function Module:OnTalentsTabShow(frame)
 end
 
 function Module:UpdateScaleForFit(frame)
-    if not TLM.db.config.autoScale then return end
+    if not Config:GetConfig('autoScale') then return end
 
     local extraHeight = 270;
     local extraWidth = 200 + (self.SideBar:GetWidth() * 1.5);
@@ -167,7 +170,7 @@ function Module:UpdateScaleForFit(frame)
 end
 
 function Module:UpdatePosition(frame)
-    if not TLM.db.config.autoPosition then return end
+    if not Config:GetConfig('autoPosition') then return end
 
     local replacePoint = true;
     local yOfs = -41;
@@ -279,7 +282,7 @@ function Module:CreateImportDialog()
 
     dialog:OnLoad();
     dialog:SetScript("OnShow", function()
-        dialog.AutoApplyCheckbox:SetChecked(TLM.db.config.autoApply);
+        dialog.AutoApplyCheckbox:SetChecked(Config:GetConfig('autoApply'));
     end);
     dialog:SetScript("OnHide", dialog.OnHide);
 
@@ -400,7 +403,7 @@ function Module:CreateScrollBox(parentContainer)
             GameTooltip:SetText(elementData.text);
             local defaultAction =
                 (elementData.data.playerIsOwner and elementData.data.isBlizzardLoadout) and "load & apply"
-                or TLM.db.config.autoApply and "load & apply"
+                or Config:GetConfig('autoApply') and "load & apply"
                 or "load";
             GameTooltip:AddLine(string.format("Left-Click to %s this loadout", defaultAction), 1, 1, 1);
             GameTooltip:AddLine("Right-Click for options", 1, 1, 1);
@@ -511,7 +514,7 @@ function Module:OpenDropDownMenu(dropDown, frame, elementData)
 end
 
 function Module:OnElementClick(elementData, forceApply)
-    if forceApply == nil then forceApply = TLM.db.config.autoApply end
+    if forceApply == nil then forceApply = Config:GetConfig('autoApply') end
     local autoApply = forceApply;
 
     if elementData.playerIsOwner and elementData.isBlizzardLoadout then

@@ -2,9 +2,11 @@ local addonName, ns = ...;
 
 --- @type TalentLoadoutManager
 local TLM = ns.TLM;
-ns.Config = ns.Config or {};
 
-local Config = ns.Config
+--- @class TalentLoadoutManagerConfig
+local Config = {};
+ns.Config = Config;
+
 
 Config.version = GetAddOnMetadata(addonName, "Version") or ""
 
@@ -14,6 +16,7 @@ function Config:GetOptions()
         type = 'group',
         get = function(info) return self:GetConfig(info[#info]) end,
         set = function(info, value) self:SetConfig(info[#info], value) end,
+        disabled = function(info) return self:IsOptionDisabled(info[#info]) end,
         args = {
             version = {
                 order = orderCount(),
@@ -27,7 +30,6 @@ function Config:GetOptions()
                 desc = "Automatically scale the talent frame to fit the screen. (disabled if BlizzMove or TalentTreeTweaks is loaded)",
                 descStyle = "inline",
                 width = "full",
-                disabled = function() return IsAddOnLoaded('BlizzMove') or IsAddOnLoaded('TalentTreeTweaks') end,
             },
             autoPosition = {
                 order = orderCount(),
@@ -45,6 +47,14 @@ function Config:GetOptions()
                 descStyle = "inline",
                 width = "full",
             },
+            --addToSimc = {
+            --    order = orderCount(),
+            --    type = "toggle",
+            --    name = "Add to SimC",
+            --    desc = "Automatically add custom talent loadouts to the SimC addon when /simc is used.",
+            --    descStyle = "inline",
+            --    width = "full",
+            --},
         },
     }
 
@@ -64,10 +74,18 @@ function Config:OpenConfig()
     Settings.OpenToCategory(addonName);
 end
 
-function Config:GetConfig(property)
-    return TLM.db.config[property];
+function Config:IsOptionDisabled(option)
+    if 'autoScale' == option then
+        return IsAddOnLoaded('BlizzMove') or IsAddOnLoaded('TalentTreeTweaks');
+    end
+
+    return false;
 end
 
-function Config:SetConfig(property, value)
-    TLM.db.config[property] = value;
+function Config:GetConfig(option)
+    return not self:IsOptionDisabled(option) and TLM.db.config[option];
+end
+
+function Config:SetConfig(option, value)
+    TLM.db.config[option] = value;
 end
