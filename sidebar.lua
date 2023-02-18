@@ -12,6 +12,11 @@ local LibDD = LibStub:GetLibrary("LibUIDropDownMenu-4.0");
 --- @type TalentLoadoutManagerConfig
 local Config = ns.Config;
 
+--- @type TalentLoadoutManagerAPI
+local API = TalentLoadoutManagerAPI;
+local GlobalAPI = TalentLoadoutManagerAPI.GlobalAPI;
+local CharacterAPI = TalentLoadoutManagerAPI.CharacterAPI;
+
 function Module:OnInitialize()
     self.renameDialogName = "TalentLoadoutManager_SideBar_RenameLoadout";
     StaticPopupDialogs[self.renameDialogName] = {
@@ -20,7 +25,7 @@ function Module:OnInitialize()
         button2 = CANCEL,
         hasEditBox = true,
         OnShow = function (dialog, data)
-            dialog.editBox:SetText(data.displayName);
+            dialog.editBox:SetText(data.loadoutInfo.name);
             dialog.editBox:HighlightText();
             dialog.editBox:SetScript("OnEscapePressed", function()
                 dialog:Hide();
@@ -32,7 +37,7 @@ function Module:OnInitialize()
         OnAccept = function(dialog, data)
             local loadout = data.loadoutInfo;
             local newName = dialog.editBox:GetText();
-            TLM:RenameCustomLoadout(nil, nil, loadout.id, newName);
+            GlobalAPI:RenameLoadout(loadout.id, newName);
             dialog:Hide();
         end,
         EditBoxOnTextChanged = function (self)
@@ -64,7 +69,7 @@ function Module:OnInitialize()
         end,
         OnAccept = function(dialog)
             local name = dialog.editBox:GetText();
-            TLM:CreateCustomLoadoutFromActiveTalents(name, nil, nil);
+            CharacterAPI:CreateCustomLoadoutFromCurrentTalents(name);
             dialog:Hide();
         end,
         EditBoxOnTextChanged = function (self)
@@ -86,11 +91,7 @@ function Module:OnInitialize()
         button1 = OKAY,
         button2 = CANCEL,
         OnAccept = function(dialog, data)
-            if data.isBlizzardLoadout then
-                TLM:DeleteBlizzardLoadout(data.id);
-            else
-                TLM:DeleteCustomLoadout(nil, nil, data.id);
-            end
+            GlobalAPI:DeleteLoadout(data.id);
             dialog:Hide();
         end,
         timeout = 0,
@@ -125,6 +126,21 @@ function Module:OnInitialize()
         hideOnEscape = true,
         preferredIndex = 3,
     };
+
+    self.genericPopupDialogName = "TalentLoadoutManager_SideBar_GenericPopup";
+    StaticPopupDialogs[self.genericPopupDialogName] = {
+        text = "%s",
+        button1 = OKAY,
+        button2 = nil,
+        timeout = 0,
+        OnAccept = function()
+        end,
+        OnCancel = function()
+        end,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    };
 end
 
 function Module:OnEnable()
@@ -136,8 +152,8 @@ end
 function Module:OnDisable()
     self:UnhookAll();
 
-    TLM:UnregisterCallback(TLM.Event.LoadoutListUpdated, self);
-    TLM:UnregisterCallback(TLM.Event.CustomLoadoutApplied, self);
+    API:UnregisterCallback(API.Event.LoadoutListUpdated, self);
+    API:UnregisterCallback(API.Event.CustomLoadoutApplied, self);
 end
 
 function Module:SetupHook()
@@ -150,8 +166,8 @@ function Module:SetupHook()
     end
     self:SecureHookScript(ClassTalentFrame.TalentsTab, "OnShow", "OnTalentsTabShow");
 
-    TLM:RegisterCallback(TLM.Event.LoadoutListUpdated, self.RefreshSideBarData, self);
-    TLM:RegisterCallback(TLM.Event.CustomLoadoutApplied, self.RefreshSideBarData, self);
+    API:RegisterCallback(API.Event.LoadoutListUpdated, self.RefreshSideBarData, self);
+    API:RegisterCallback(API.Event.CustomLoadoutApplied, self.RefreshSideBarData, self);
 end
 
 function Module:OnTalentsTabShow(frame)
@@ -197,7 +213,7 @@ function Module:CreateImportDialog()
     local dialog = CreateFrame("Frame", nil, UIParent, "ClassTalentLoadoutDialogTemplate");
     dialog.titleText = "Import Custom Loadout";
     Mixin(dialog, ClassTalentLoadoutImportDialogMixin);
-    dialog:SetSize(460, 275);
+    dialog:SetSize(460, 300);
     dialog:Hide();
 
     --- import control
@@ -237,13 +253,30 @@ function Module:CreateImportDialog()
     --- autoApply checkbox
     dialog.AutoApplyCheckbox = CreateFrame('CheckButton', nil, dialog, 'UICheckButtonTemplate');
     local checkbox = dialog.AutoApplyCheckbox;
-    local text = string.format('Automatically Apply the loadout on import');
     checkbox:SetPoint('TOPLEFT', dialog.NameControl, 'BOTTOMLEFT', 0, 5);
     checkbox:SetSize(24, 24);
-    checkbox:SetScript('OnClick', function(cb) self:OnCheckboxClick(cb); end);
     checkbox:SetScript('OnEnter', function(cb)
         GameTooltip:SetOwner(cb, 'ANCHOR_RIGHT');
-        GameTooltip:SetText(text);
+        GameTooltip:SetText(cb.text:GetText());
+        GameTooltip:AddLine('If checked, the loadout will automatically be applied to your character when you import it.', 1, 1, 1, true);
+        GameTooltip:Show();
+    end);
+    checkbox:SetScript('OnLeave', function()
+        GameTooltip:Hide();
+    end);
+    checkbox.text = checkbox:CreateFontString(nil, 'ARTWORK', 'GameFontNormal');
+    checkbox.text:SetPoint('LEFT', checkbox, 'RIGHT', 0, 1);
+    checkbox.text:SetText(string.format('Automatically Apply the loadout on import'));
+    checkbox:SetHitRectInsets(-10, -checkbox.text:GetStringWidth(), -5, 0);
+
+    -- ImportIntoCurrentLoadout checkbox
+    dialog.ImportIntoCurrentLoadoutCheckbox = CreateFrame('CheckButton', nil, dialog, 'UICheckButtonTemplate');
+    checkbox = dialog.ImportIntoCurrentLoadoutCheckbox;
+    checkbox:SetPoint('TOPLEFT', dialog.AutoApplyCheckbox, 'BOTTOMLEFT', 0, 5);
+    checkbox:SetSize(24, 24);
+    checkbox:SetScript('OnEnter', function(cb)
+        GameTooltip:SetOwner(cb, 'ANCHOR_RIGHT');
+        GameTooltip:SetText(cb.text:GetText());
         GameTooltip:AddLine('If checked, the imported build will be imported into the currently selected loadout.', 1, 1, 1);
         GameTooltip:Show();
     end);
@@ -252,7 +285,7 @@ function Module:CreateImportDialog()
     end);
     checkbox.text = checkbox:CreateFontString(nil, 'ARTWORK', 'GameFontNormal');
     checkbox.text:SetPoint('LEFT', checkbox, 'RIGHT', 0, 1);
-    checkbox.text:SetText(text);
+    checkbox.text:SetText(string.format('Import into currently selected custom loadout'));
     checkbox:SetHitRectInsets(-10, -checkbox.text:GetStringWidth(), -5, 0);
 
     --- accept button
@@ -273,18 +306,29 @@ function Module:CreateImportDialog()
             local importText = self.ImportControl:GetText();
             local loadoutName = self.NameControl:GetText();
             local autoApply = self.AutoApplyCheckbox:GetChecked();
-            local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, autoApply, loadoutName);
+            local importIntoCurrentLoadout = self.ImportIntoCurrentLoadoutCheckbox:IsShown() and self.ImportIntoCurrentLoadoutCheckbox:GetChecked();
 
-            if newLoadoutInfo then
+            local result, errorOrNil;
+            if not importIntoCurrentLoadout then
+                result, errorOrNil = CharacterAPI:ImportCustomLoadout(importText, loadoutName, autoApply);
+            else
+                result, errorOrNil = GlobalAPI:UpdateCustomLoadoutWithImportString(Module.activeLoadout.id, importText);
+                if autoApply and result and not errorOrNil then
+                    CharacterAPI:LoadLoadout(Module.activeLoadout.id, autoApply);
+                end
+            end
+
+            if result then
                 StaticPopupSpecial_Hide(self);
             elseif errorOrNil then
-                StaticPopup_Show("LOADOUT_IMPORT_ERROR_DIALOG", ERROR_COLOR:WrapTextInColorCode(errorOrNil));
+                StaticPopup_Show(Module.genericPopupDialogName, ERROR_COLOR:WrapTextInColorCode(errorOrNil));
             end
         end
     end
 
     dialog:OnLoad();
     dialog:SetScript("OnShow", function()
+        dialog.ImportIntoCurrentLoadoutCheckbox:SetShown(not self.activeLoadout.isBlizzardLoadout);
         dialog.AutoApplyCheckbox:SetChecked(Config:GetConfig('autoApply'));
     end);
     dialog:SetScript("OnHide", dialog.OnHide);
@@ -330,10 +374,30 @@ function Module:CreateSideBar()
     end);
     sideBar.ImportButton.tooltipText = "Import a custom loadout from a string";
 
+    -- add a Save button
+    sideBar.SaveButton = CreateFrame("Button", nil, sideBar, "UIPanelButtonTemplate, UIButtonTemplate");
+    sideBar.SaveButton:SetSize((width / 2) - 10, 20);
+    sideBar.SaveButton:SetText("Save");
+    sideBar.SaveButton:SetPoint("TOPLEFT", sideBar.CreateButton, "BOTTOMLEFT", 0, 0);
+    sideBar.SaveButton:SetScript("OnClick", function()
+        self:SaveCurrentTalentsIntoLoadout();
+    end);
+    sideBar.SaveButton.tooltipText = "Save the current talents into the currently selected loadout";
+
+    -- add a Config button
+    sideBar.ConfigButton = CreateFrame("Button", nil, sideBar, "UIPanelButtonTemplate, UIButtonTemplate");
+    sideBar.ConfigButton:SetSize((width / 2) - 10, 20);
+    sideBar.ConfigButton:SetText("Config");
+    sideBar.ConfigButton:SetPoint("TOPLEFT", sideBar.SaveButton, "TOPRIGHT", 0, 0);
+    sideBar.ConfigButton:SetScript("OnClick", function()
+        self:ShowConfigDialog();
+    end);
+    sideBar.ConfigButton.tooltipText = "Open the configuration UI";
+
     -- add a scrollbox frame
     local dataProvider
     sideBar.ScrollBox, dataProvider = self:CreateScrollBox(sideBar);
-    sideBar.ScrollBox:SetPoint("TOPLEFT", sideBar.CreateButton, "BOTTOMLEFT", 0, -10);
+    sideBar.ScrollBox:SetPoint("TOPLEFT", sideBar.SaveButton, "BOTTOMLEFT", 0, -10);
     sideBar.ScrollBox:SetPoint("BOTTOMRIGHT", sideBar, "BOTTOMRIGHT", -10, 10);
 
     if not IsAddOnLoaded('TalentTreeTweaks') then
@@ -353,6 +417,15 @@ function Module:CreateSideBar()
         sideBar.Warning:SetWidth(width - 50);
         sideBar.Warning:SetText("TalentTreeTweaks is not loaded. You might encounter serious bugs without it.");
         sideBar.Warning:SetTextColor(1, 0.5, 0.5);
+
+        local function onOptionChange(_, option, value)
+            if option == 'disableTTTWarning' then
+                sideBar.Warning:SetShown(not value);
+                sideBar.WarningLink:SetShown(not value);
+            end
+        end
+        Config:RegisterCallback(Config.Event.OptionValueChanged, onOptionChange);
+        onOptionChange(nil, 'disableTTTWarning', Config:GetConfig('disableTTTWarning'));
     end
 
     return sideBar, dataProvider;
@@ -476,14 +549,13 @@ function Module:OpenDropDownMenu(dropDown, frame, elementData)
             notCheckable = true,
             disabled = elementData.isBlizzardLoadout,
             func = function()
-                local selectedNodes = TLM:SerializeLoadout(C_ClassTalents.GetActiveConfigID());
-                TLM:UpdateCustomLoadout(elementData.loadoutInfo.id, selectedNodes);
+                CharacterAPI:UpdateCustomLoadoutWithCurrentTalents(elementData.loadoutInfo.id);
             end,
         },
         {
             text = "Rename",
             notCheckable = true,
-            disabled = elementData.isBlizzardLoadout,
+            disabled = not elementData.playerIsOwner,
             func = function()
                 StaticPopup_Show(self.renameDialogName, elementData.displayName, nil, elementData);
             end,
@@ -520,18 +592,7 @@ function Module:OnElementClick(elementData, forceApply)
     if forceApply == nil then forceApply = Config:GetConfig('autoApply') end
     local autoApply = forceApply;
 
-    if elementData.playerIsOwner and elementData.isBlizzardLoadout then
-        -- autoApply is not supported for blizzard loadouts (yet)
-        TLM:ApplyBlizzardLoadout(elementData.id);
-        return;
-    end
-
-    local loadoutInfo = elementData.loadoutInfo;
-    if elementData.isBlizzardLoadout then
-        loadoutInfo = TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo);
-    end
-
-    TLM:ApplyCustomLoadout(loadoutInfo, autoApply);
+    CharacterAPI:LoadLoadout(elementData.id, autoApply);
 end
 
 function Module:OnElementRightClick(frame, elementData)
@@ -544,7 +605,7 @@ function Module:OnElementRightClick(frame, elementData)
 end
 
 function Module:ExportLoadout(elementData)
-    local exportString = TLM:ExportLoadoutToString(nil, nil, elementData.loadoutInfo);
+    local exportString = GlobalAPI:GetExportString(elementData.id);
     if not exportString then
         return;
     end
@@ -553,7 +614,7 @@ function Module:ExportLoadout(elementData)
 end
 
 function Module:OpenInTalentTreeViewer(elementData)
-    local exportString = TLM:ExportLoadoutToString(nil, nil, elementData.loadoutInfo);
+    local exportString = GlobalAPI:GetExportString(elementData.id);
     if not exportString then
         return;
     end
@@ -606,13 +667,26 @@ function Module:RefreshSideBarData()
     local dataProvider = self.DataProvider;
     dataProvider:Flush();
 
-    local loadouts = TLM:GetLoadouts();
+    local loadouts = GlobalAPI:GetLoadouts();
+    self.activeLoadout = CharacterAPI:GetActiveLoadoutInfo();
     for _, loadout in pairs(loadouts) do
         dataProvider:Insert({
             text = loadout.displayName,
             data = loadout,
-            isActive = loadout.isActive,
+            isActive = loadout.id == self.activeLoadout.id,
         });
     end
+
+    self.SideBar.SaveButton:SetEnabled(self.activeLoadout and not self.activeLoadout.isBlizzardLoadout);
 end
 
+function Module:SaveCurrentTalentsIntoLoadout()
+    if not self.activeLoadout then
+        return;
+    end
+    CharacterAPI:UpdateCustomLoadoutWithCurrentTalents(self.activeLoadout.id);
+end
+
+function Module:ShowConfigDialog()
+    ns.Config:OpenConfigDialog();
+end

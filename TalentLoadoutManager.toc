@@ -11,5 +11,6 @@
 libs\embeds.xml
 
 TalentLoadoutManager.lua
+ManagerApi.lua
 config.lua
 sidebar.lua

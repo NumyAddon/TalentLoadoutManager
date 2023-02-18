@@ -14,8 +14,15 @@ local TLM = ns.TLM;
 --- @class TalentLoadoutManagerAPI
 TalentLoadoutManagerAPI = {};
 
+--- @class TalentLoadoutManagerAPI_GlobalAPI
+local GlobalAPI = {};
+--- @class TalentLoadoutManagerAPI_CharacterAPI
+local CharacterAPI = {};
+--- @type TalentLoadoutManagerAPI
 local API = TalentLoadoutManagerAPI;
 
+API.GlobalAPI = GlobalAPI;
+API.CharacterAPI = CharacterAPI;
 API.Event = {
     --- payload: classID<number>, specID<number>, loadoutID<string>, loadoutInfo<TalentLoadoutManagerAPI_LoadoutInfo>
     CustomLoadoutApplied = TLM.Event.CustomLoadoutApplied,
@@ -88,7 +95,7 @@ end);
 --- @param specIDOrNil number|nil - if nil, will assume the player's current spec
 --- @param classIDOrNil number|nil - if nil, will assume the player's current class
 --- @return TalentLoadoutManagerAPI_LoadoutInfo[]
-function API:GetLoadouts(specIDOrNil, classIDOrNil)
+function GlobalAPI:GetLoadouts(specIDOrNil, classIDOrNil)
     local loadouts = {};
     local tlmLoadouts = TLM:GetLoadouts(classIDOrNil, specIDOrNil);
 
@@ -102,7 +109,7 @@ end
 --- @param specIDOrNil number|nil - if nil, will assume the player's current spec
 --- @param classIDOrNil number|nil - if nil, will assume the player's current class
 --- @return table<number|string> - list of loadout IDs
-function API:GetLoadoutIDs(specIDOrNil, classIDOrNil)
+function GlobalAPI:GetLoadoutIDs(specIDOrNil, classIDOrNil)
     local loadoutIDs = {};
     local tlmLoadouts = TLM:GetLoadouts(classIDOrNil, specIDOrNil);
 
@@ -113,7 +120,7 @@ function API:GetLoadoutIDs(specIDOrNil, classIDOrNil)
     return loadoutIDs;
 end
 
-function API:GetAllLoadouts()
+function GlobalAPI:GetAllLoadouts()
     local loadouts = {};
     local tlmLoadouts = TLM:GetAllLoadouts();
 
@@ -126,24 +133,24 @@ end
 
 --- @param loadoutID number|string - the loadout ID, this can be a blizzard ConfigID, or a custom TLM loadout ID
 --- @return TalentLoadoutManagerAPI_LoadoutInfo|nil
-function API:GetLoadoutInfoByID(loadoutID)
+function GlobalAPI:GetLoadoutInfoByID(loadoutID)
     local displayInfo = TLM:GetLoadoutByID(loadoutID);
 
     return displayInfo and CreateLoadoutInfoFromDisplayInfo(displayInfo);
 end
 
 --- @param loadoutID number|string - the loadout ID, this can be a blizzard ConfigID, or a custom TLM loadout ID
-function API:GetExportString(loadoutID)
+function GlobalAPI:GetExportString(loadoutID)
     local displayInfo = TLM:GetLoadoutByID(loadoutID);
 
-    return TLM:ExportLoadoutToString(displayInfo.classID, displayInfo.specID, displayInfo.loadoutInfo);
+    return displayInfo and TLM:ExportLoadoutToString(displayInfo.classID, displayInfo.specID, displayInfo.loadoutInfo);
 end
 
 --- you cannot rename a Blizzard loadout if you are not the owner
 --- @param loadoutID number|string - the loadout ID, this can be a blizzard ConfigID, or a custom TLM loadout ID
 --- @param newName string
 --- @return boolean - true if the rename was successful
-function API:RenameLoadout(loadoutID, newName)
+function GlobalAPI:RenameLoadout(loadoutID, newName)
     if IsLoadoutIDCustomLoadout(loadoutID) then
         local displayInfo = TLM:GetLoadoutByID(loadoutID);
         if not displayInfo then
@@ -159,7 +166,7 @@ end
 --- you cannot delete a Blizzard loadout if you are not the owner
 --- @param loadoutID number|string - the loadout ID, this can be a blizzard ConfigID, or a custom TLM loadout ID
 --- @return boolean - true if the delete was successful
-function API:DeleteLoadout(loadoutID)
+function GlobalAPI:DeleteLoadout(loadoutID)
     if IsLoadoutIDCustomLoadout(loadoutID) then
         local displayInfo = TLM:GetLoadoutByID(loadoutID);
         if not displayInfo then
@@ -172,10 +179,21 @@ function API:DeleteLoadout(loadoutID)
     end
 end
 
-function API:ImportCustomLoadout(importText, loadoutName, autoApply)
+function GlobalAPI:ImportCustomLoadout(importText, loadoutName)
+    local autoApply = false;
     local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, autoApply, loadoutName);
 
     return newLoadoutInfo and self:GetLoadoutInfoByID(newLoadoutInfo.id), errorOrNil;
+end
+
+function GlobalAPI:UpdateCustomLoadoutWithImportString(loadoutID, importText)
+    local loadoutInfo = self:GetLoadoutInfoByID(loadoutID);
+    if not loadoutInfo then
+        return false, "Loadout not found";
+    end
+    local result, errorOrNil = TLM:BuildSerializedSelectedNodesFromImportString(importText, loadoutInfo.classID, loadoutInfo.specID);
+
+    return result and TLM:UpdateCustomLoadout(loadoutID, result), errorOrNil;
 end
 
 -------------------------------------------------------------------------
@@ -186,23 +204,23 @@ end
 ---
 -------------------------------------------------------------------------
 
-function API:GetActiveLoadoutInfo()
+function CharacterAPI:GetActiveLoadoutInfo()
     local loadoutID = self:GetActiveLoadoutID();
 
-    return loadoutID and self:GetLoadoutInfoByID(loadoutID);
+    return loadoutID and GlobalAPI:GetLoadoutInfoByID(loadoutID);
 end
 
 --- @return number|string|nil - the loadout ID, this can be a blizzard ConfigID, or a custom TLM loadout ID
-function API:GetActiveLoadoutID()
-    TLM:GetActiveLoadoutID()
+function CharacterAPI:GetActiveLoadoutID()
+    return TLM:GetActiveLoadoutID()
 end
 
 --- @return number|nil - whichever loadout is selected, or the "default loadout", or nil
-function API:GetActiveBlizzardLoadoutConfigID()
-    TLM:GetActiveBlizzardLoadoutConfigID();
+function CharacterAPI:GetActiveBlizzardLoadoutConfigID()
+    return TLM:GetActiveBlizzardLoadoutConfigID();
 end
 
-function API:LoadLoadout(loadoutID, autoApply)
+function CharacterAPI:LoadLoadout(loadoutID, autoApply)
     local displayInfo = TLM:GetLoadoutByID(loadoutID);
     if not displayInfo then
         return false;
@@ -221,7 +239,17 @@ function API:LoadLoadout(loadoutID, autoApply)
     return TLM:ApplyCustomLoadout(loadoutInfo, autoApply);
 end
 
-function API:UpdateCustomLoadoutWithCurrentTalents(loadoutID)
+function CharacterAPI:UpdateCustomLoadoutWithCurrentTalents(loadoutID)
     local selectedNodes = TLM:SerializeLoadout(C_ClassTalents.GetActiveConfigID());
     TLM:UpdateCustomLoadout(loadoutID, selectedNodes);
+end
+
+function CharacterAPI:CreateCustomLoadoutFromCurrentTalents(loadoutName)
+    TLM:CreateCustomLoadoutFromActiveTalents(loadoutName, nil, nil);
+end
+
+function CharacterAPI:ImportCustomLoadout(importText, loadoutName, autoApply)
+    local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, autoApply, loadoutName);
+
+    return newLoadoutInfo and GlobalAPI:GetLoadoutInfoByID(newLoadoutInfo.id), errorOrNil;
 end

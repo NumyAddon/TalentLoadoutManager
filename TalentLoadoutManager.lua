@@ -281,8 +281,10 @@ function TLM:UpdateBlizzardLoadouts()
     local specID = self.playerSpecID;
     self.db.blizzardLoadouts[classID] = self.db.blizzardLoadouts[classID] or {};
     self.db.blizzardLoadouts[classID][specID] = self.db.blizzardLoadouts[classID][specID] or {};
-    for configID, _ in pairs(self.db.blizzardLoadouts[classID][specID][self.playerName]) do
-        self.loadoutByIDCache[configID] = nil;
+    if self.db.blizzardLoadouts[classID][specID][self.playerName] then
+        for configID, _ in pairs(self.db.blizzardLoadouts[classID][specID][self.playerName]) do
+            self.loadoutByIDCache[configID] = nil;
+        end
     end
     self.db.blizzardLoadouts[classID][specID][self.playerName] = {};
 

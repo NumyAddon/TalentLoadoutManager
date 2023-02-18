@@ -58,10 +58,24 @@ function Config:GetOptions()
         },
     }
 
+    if not IsAddOnLoaded('TalentTreeTweaks') then
+        options.args.disableTTTWarning = {
+            order = orderCount(),
+            type = "toggle",
+            name = "Disable TTT is missing warning",
+            desc = "Disable the warning that appears when TalentTreeTweaks is not installed.",
+        };
+    end
+
     return options
 end
 
+Config.Event = { OptionValueChanged = 'OptionValueChanged' };
+
 function Config:Initialize()
+    Mixin(self, CallbackRegistryMixin);
+    CallbackRegistryMixin.OnLoad(self);
+
     self:RegisterOptions();
     LibStub("AceConfigDialog-3.0"):AddToBlizOptions(addonName, addonName);
 end
@@ -72,6 +86,10 @@ end
 
 function Config:OpenConfig()
     Settings.OpenToCategory(addonName);
+end
+
+function Config:OpenConfigDialog()
+    LibStub("AceConfigDialog-3.0"):Open(addonName);
 end
 
 function Config:IsOptionDisabled(option)
@@ -88,4 +106,6 @@ end
 
 function Config:SetConfig(option, value)
     TLM.db.config[option] = value;
+
+    self:TriggerEvent(self.Event.OptionValueChanged, option, value);
 end
