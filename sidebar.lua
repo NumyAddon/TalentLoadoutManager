@@ -159,6 +159,10 @@ function Module:SetupHook()
     if not self.SideBar then
         self.SideBar, self.DataProvider = self:CreateSideBar();
         self.DropDown = self:InitDropDown(self.SideBar);
+
+        EventUtil.ContinueOnAddOnLoaded('BlizzMove', function()
+            self:IntegrateWithBlizzMove();
+        end);
     end
     if not self.importDialog then
         self.importDialog = self:CreateImportDialog();
@@ -688,4 +692,44 @@ end
 
 function Module:ShowConfigDialog()
     ns.Config:OpenConfigDialog();
+end
+
+function Module:IntegrateWithBlizzMove()
+    local compatible = false;
+    if(BlizzMoveAPI and BlizzMoveAPI.GetVersion and BlizzMoveAPI.RegisterAddOnFrames) then
+        local _, _, _, _, versionInt = BlizzMoveAPI:GetVersion()
+        if (versionInt == nil or versionInt >= 30200) then
+            compatible = true;
+        end
+    end
+
+    if(not compatible) then
+        print(addonName .. ' is not compatible with the current version of BlizzMove, please update.')
+        return;
+    end
+    local frameTable = {
+        ["Blizzard_ClassTalentUI"] = {
+            ["ClassTalentFrame"] =
+            {
+                MinVersion = 100000,
+                SubFrames =
+                {
+                    ["ClassTalentFrame.TalentsTab"] =
+                    {
+                        MinVersion = 100000,
+                        SubFrames =
+                        {
+                            ["TLM-SideBar"] =
+                            {
+                                MinVersion = 100000,
+                                FrameReference = self.SideBar,
+                                Detachable = true,
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    };
+    BlizzMoveAPI:RegisterAddOnFrames(frameTable);
 end

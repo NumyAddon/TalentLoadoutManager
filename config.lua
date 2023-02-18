@@ -47,14 +47,14 @@ function Config:GetOptions()
                 descStyle = "inline",
                 width = "full",
             },
-            --addToSimc = {
-            --    order = orderCount(),
-            --    type = "toggle",
-            --    name = "Add to SimC",
-            --    desc = "Automatically add custom talent loadouts to the SimC addon when /simc is used.",
-            --    descStyle = "inline",
-            --    width = "full",
-            --},
+            integrateWithSimc = {
+                order = orderCount(),
+                type = "toggle",
+                name = "Add to SimC",
+                desc = "Automatically add custom talent loadouts to the SimulationCraft addon when /simc is used.",
+                descStyle = "inline",
+                width = "full",
+            },
         },
     }
 
@@ -95,6 +95,9 @@ end
 function Config:IsOptionDisabled(option)
     if 'autoScale' == option then
         return IsAddOnLoaded('BlizzMove') or IsAddOnLoaded('TalentTreeTweaks');
+    end
+    if 'integrateWithSimc' == option then
+        return not IsAddOnLoaded('Simulationcraft');
     end
 
     return false;

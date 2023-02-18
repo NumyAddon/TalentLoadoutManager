@@ -6,7 +6,7 @@
 ## X-Curse-Project-ID: 821821
 ## SavedVariables: TalentLoadoutManagerDB
 ## SavedVariablesPerCharacter: TalentLoadoutManagerCharDB
-## OptionalDeps: TalentTreeTweaks
+## OptionalDeps: TalentTreeTweaks,Simulationcraft,BlizzMove
 
 libs\embeds.xml
 
@@ -14,3 +14,5 @@ TalentLoadoutManager.lua
 ManagerApi.lua
 config.lua
 sidebar.lua
+
+SimulationCraft.lua

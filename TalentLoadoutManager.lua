@@ -71,6 +71,7 @@ function TLM:OnInitialize()
         autoScale = true,
         autoPosition = true,
         autoApply = true,
+        integrateWithSimc = true,
     };
 
     for key, value in pairs(defaults) do
