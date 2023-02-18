@@ -672,11 +672,12 @@ function Module:RefreshSideBarData()
 
     local loadouts = GlobalAPI:GetLoadouts();
     self.activeLoadout = CharacterAPI:GetActiveLoadoutInfo();
+    local activeLoadoutID = self.activeLoadout and self.activeLoadout.id or nil;
     for _, loadout in pairs(loadouts) do
         dataProvider:Insert({
             text = loadout.displayName,
             data = loadout,
-            isActive = loadout.id == self.activeLoadout.id,
+            isActive = loadout.id == activeLoadoutID,
         });
     end
 
