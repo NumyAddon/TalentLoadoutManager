@@ -714,6 +714,10 @@ function Module:IntegrateWithBlizzMove()
                 MinVersion = 100000,
                 SubFrames =
                 {
+                    ["ClassTalentFrame.TalentsTab.ButtonsParent"] =
+                    {
+                        MinVersion = 100000,
+                    },
                     ["ClassTalentFrame.TalentsTab"] =
                     {
                         MinVersion = 100000,
