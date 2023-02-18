@@ -92,4 +92,5 @@ function Module:PrintSimcProfile()
 
     -- update the simc edit box
     SimcEditBox:SetText(text);
+    SimcEditBox:HighlightText();
 end
