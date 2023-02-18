@@ -25,7 +25,7 @@ function Module:OnInitialize()
         button2 = CANCEL,
         hasEditBox = true,
         OnShow = function (dialog, data)
-            dialog.editBox:SetText(data.loadoutInfo.name);
+            dialog.editBox:SetText(data.name);
             dialog.editBox:HighlightText();
             dialog.editBox:SetScript("OnEscapePressed", function()
                 dialog:Hide();
@@ -35,9 +35,8 @@ function Module:OnInitialize()
             end);
         end,
         OnAccept = function(dialog, data)
-            local loadout = data.loadoutInfo;
             local newName = dialog.editBox:GetText();
-            GlobalAPI:RenameLoadout(loadout.id, newName);
+            GlobalAPI:RenameLoadout(data.id, newName);
             dialog:Hide();
         end,
         EditBoxOnTextChanged = function (self)
@@ -549,7 +548,7 @@ function Module:OpenDropDownMenu(dropDown, frame, elementData)
             notCheckable = true,
             disabled = elementData.isBlizzardLoadout,
             func = function()
-                CharacterAPI:UpdateCustomLoadoutWithCurrentTalents(elementData.loadoutInfo.id);
+                CharacterAPI:UpdateCustomLoadoutWithCurrentTalents(elementData.id);
             end,
         },
         {

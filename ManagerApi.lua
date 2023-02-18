@@ -87,11 +87,12 @@ end);
 ---
 --- class and spec agnostic functions
 ---
---- each function has a classIDOrNil and specIDOrNil parameter,
+--- some of these functions have a classIDOrNil and specIDOrNil parameter,
 --- if these are nil, the player's current class and spec will be used
 ---
 -------------------------------------------------------------------------
 
+--- Returns loadouts for the specified class and spec
 --- @param specIDOrNil number|nil - if nil, will assume the player's current spec
 --- @param classIDOrNil number|nil - if nil, will assume the player's current class
 --- @return TalentLoadoutManagerAPI_LoadoutInfo[]
@@ -106,6 +107,7 @@ function GlobalAPI:GetLoadouts(specIDOrNil, classIDOrNil)
     return loadouts;
 end
 
+--- Returns loadout IDs for the specified class and spec
 --- @param specIDOrNil number|nil - if nil, will assume the player's current spec
 --- @param classIDOrNil number|nil - if nil, will assume the player's current class
 --- @return table<number|string> - list of loadout IDs
@@ -120,6 +122,8 @@ function GlobalAPI:GetLoadoutIDs(specIDOrNil, classIDOrNil)
     return loadoutIDs;
 end
 
+--- Returns loadouts for all classes and specs
+--- @return TalentLoadoutManagerAPI_LoadoutInfo[]
 function GlobalAPI:GetAllLoadouts()
     local loadouts = {};
     local tlmLoadouts = TLM:GetAllLoadouts();
@@ -179,21 +183,31 @@ function GlobalAPI:DeleteLoadout(loadoutID)
     end
 end
 
+--- Create a new Custom Loadout from an import string
+--- @param importText string - the import string
+--- @param loadoutName string - the name of the new loadout
+--- @return TalentLoadoutManagerAPI_LoadoutInfo|boolean, string|nil - the new loadout info, or false if there was an error; second return value is the error message if there was an error
 function GlobalAPI:ImportCustomLoadout(importText, loadoutName)
     local autoApply = false;
     local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, autoApply, loadoutName);
 
-    return newLoadoutInfo and self:GetLoadoutInfoByID(newLoadoutInfo.id), errorOrNil;
+    return newLoadoutInfo and self:GetLoadoutInfoByID(newLoadoutInfo.id) or false, errorOrNil;
 end
 
+--- Update an existing Custom Loadout from an import string
+--- @param loadoutID number|string - the loadout ID
+--- @param importText string - the import string
+--- @return TalentLoadoutManagerAPI_LoadoutInfo|boolean, string|nil - updated loadout info, if the update was successful, false if there was an error; second return value is the error message if there was an error
 function GlobalAPI:UpdateCustomLoadoutWithImportString(loadoutID, importText)
     local loadoutInfo = self:GetLoadoutInfoByID(loadoutID);
     if not loadoutInfo then
         return false, "Loadout not found";
     end
     local result, errorOrNil = TLM:BuildSerializedSelectedNodesFromImportString(importText, loadoutInfo.classID, loadoutInfo.specID);
-
-    return result and TLM:UpdateCustomLoadout(loadoutID, result), errorOrNil;
+    if result then
+        TLM:UpdateCustomLoadout(loadoutID, result);
+    end
+    return result and self:GetLoadoutInfoByID(loadoutID) or false, errorOrNil;
 end
 
 -------------------------------------------------------------------------
@@ -204,22 +218,29 @@ end
 ---
 -------------------------------------------------------------------------
 
+--- Get the active loadout info for the current character, this can be a Blizzard loadout, or a custom loadout, or nil if there is no active loadout
+--- @return TalentLoadoutManagerAPI_LoadoutInfo|nil - the active loadout info
 function CharacterAPI:GetActiveLoadoutInfo()
     local loadoutID = self:GetActiveLoadoutID();
 
     return loadoutID and GlobalAPI:GetLoadoutInfoByID(loadoutID);
 end
 
+--- Get the active loadout ID for the current character, this can be a Blizzard loadout, or a custom loadout, or nil if there is no active loadout
 --- @return number|string|nil - the loadout ID, this can be a blizzard ConfigID, or a custom TLM loadout ID
 function CharacterAPI:GetActiveLoadoutID()
-    return TLM:GetActiveLoadoutID()
+    return TLM:GetActiveLoadoutID();
 end
 
---- @return number|nil - whichever loadout is selected, or the "default loadout", or nil
+--- Get the active Blizzard loadout ConfigID for the current character, or the "default loadout" or nil if there is no active Blizzard loadout
+--- @return number|nil
 function CharacterAPI:GetActiveBlizzardLoadoutConfigID()
     return TLM:GetActiveBlizzardLoadoutConfigID();
 end
 
+--- Load a loadout, this will apply the loadout to the current character
+--- @param loadoutID number|string - the loadout ID, this can be a blizzard ConfigID, or a custom TLM loadout ID
+--- @param autoApply boolean - if true, the talent changes will be applied immediately, if false, they are left pending
 function CharacterAPI:LoadLoadout(loadoutID, autoApply)
     local displayInfo = TLM:GetLoadoutByID(loadoutID);
     if not displayInfo then
@@ -227,7 +248,7 @@ function CharacterAPI:LoadLoadout(loadoutID, autoApply)
     end
 
     if displayInfo.playerIsOwner and displayInfo.isBlizzardLoadout then
-        -- autoApply is not supported for blizzard loadouts (yet)
+        -- disabling autoApply is not supported for blizzard loadouts (yet)
         return TLM:ApplyBlizzardLoadout(displayInfo.id);
     end
 
@@ -239,15 +260,30 @@ function CharacterAPI:LoadLoadout(loadoutID, autoApply)
     return TLM:ApplyCustomLoadout(loadoutInfo, autoApply);
 end
 
+--- Update a custom loadout with the current talents
 function CharacterAPI:UpdateCustomLoadoutWithCurrentTalents(loadoutID)
+    local configID = C_ClassTalents.GetActiveConfigID();
+    if not configID then return; end
+
     local selectedNodes = TLM:SerializeLoadout(C_ClassTalents.GetActiveConfigID());
     TLM:UpdateCustomLoadout(loadoutID, selectedNodes);
 end
 
+--- Create a new custom loadout from the current talents
+--- The new loadout will be set as active automatically
+--- @param loadoutName string - the name of the new loadout
+--- @return TalentLoadoutManagerAPI_LoadoutInfo - the new loadout info
 function CharacterAPI:CreateCustomLoadoutFromCurrentTalents(loadoutName)
-    TLM:CreateCustomLoadoutFromActiveTalents(loadoutName, nil, nil);
+    local loadoutInfo = TLM:CreateCustomLoadoutFromActiveTalents(loadoutName, nil, nil);
+
+    return GlobalAPI:GetLoadoutInfoByID(loadoutInfo.id);
 end
 
+--- Create a new custom loadout from an import string
+--- @param importText string - the import string
+--- @param loadoutName string - the name of the new loadout
+--- @param autoApply boolean - if true, the talent changes will be applied immediately, if false, they are left pending
+--- @return TalentLoadoutManagerAPI_LoadoutInfo, string|nil - the new loadout info, second return value is the error message if there was an error
 function CharacterAPI:ImportCustomLoadout(importText, loadoutName, autoApply)
     local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, autoApply, loadoutName);
 

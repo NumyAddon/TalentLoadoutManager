@@ -119,7 +119,9 @@ function TLM:TRAIT_CONFIG_UPDATED()
         end)
     end
 
-    self:UpdateBlizzardLoadouts();
+    RunNextFrame(function()
+        self:UpdateBlizzardLoadouts();
+    end);
 end
 
 function TLM:TRAIT_CONFIG_CREATED(_, configInfo)
@@ -206,6 +208,8 @@ function TLM:RebuildLoadoutByIDCache()
 end
 
 function TLM:GetActiveBlizzardLoadoutConfigID()
+    if not self.playerSpecID then return nil; end
+
     local lastSelected = C_ClassTalents.GetLastSelectedSavedConfigID(self.playerSpecID);
     local selectionID = ClassTalentFrame
         and ClassTalentFrame.TalentsTab
