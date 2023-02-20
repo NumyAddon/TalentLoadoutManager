@@ -533,7 +533,6 @@ function Module:OpenDropDownMenu(dropDown, frame, elementData)
         {
             text = "Load",
             notCheckable = true,
-            disabled = elementData.playerIsOwner and elementData.isBlizzardLoadout,
             func = function()
                 local forceApply = false;
                 self:OnElementClick(elementData, forceApply);

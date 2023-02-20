@@ -12,6 +12,7 @@ libs\embeds.xml
 
 TalentLoadoutManager.lua
 ManagerApi.lua
+BlizzardLoadoutChanger.lua
 config.lua
 sidebar.lua
 

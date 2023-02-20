@@ -111,15 +111,6 @@ function TLM:SPELLS_CHANGED()
 end
 
 function TLM:TRAIT_CONFIG_UPDATED()
-    if self.deferredSaveLoadout then
-        local loadout = self.deferredSaveLoadout;
-        self.deferredSaveLoadout = nil;
-        C_Timer.After(0, function()
-            -- delayed to ensure processing happens after the talent UI is done
-            self:ApplyCustomLoadout(loadout);
-        end)
-    end
-
     RunNextFrame(function()
         self:UpdateBlizzardLoadouts();
     end);
@@ -132,7 +123,7 @@ function TLM:TRAIT_CONFIG_CREATED(_, configInfo)
     self.charDb.customLoadoutConfigID[specID] = configInfo.ID;
     local loadout = self.deferredLoadout;
     self.deferredLoadout = nil;
-    C_Timer.After(0, function()
+    RunNextFrame(function()
         -- delayed to ensure processing happens after the talent UI is done
         self:ApplyCustomLoadout(loadout);
     end)
@@ -593,9 +584,9 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
     local entriesCount = #loadoutEntryInfo + foundIssues;
 
     if self:GetActiveBlizzardLoadoutConfigID() ~= targetConfigID then
-        self:ApplyBlizzardLoadout(targetConfigID);
-
-        self.deferredSaveLoadout = loadoutInfo;
+        self:ApplyBlizzardLoadout(targetConfigID, true, function()
+            RunNextFrame(function() self:ApplyCustomLoadout(loadoutInfo, autoApply); end);
+        end);
 
         return true;
     end
@@ -648,15 +639,8 @@ function TLM:ApplyCustomLoadoutByID(classIDOrNil, specIDOrNil, loadoutID)
     return false;
 end
 
-function TLM:ApplyBlizzardLoadout(configID)
-    -- it should be possible to safely replace this with C_ClassTalents.LoadConfig in 10.0.7
-    if not ClassTalentFrame then
-        ClassTalentFrame_LoadUI();
-    end
-    local talentsTab = ClassTalentFrame.TalentsTab;
-    talentsTab:LoadConfigByPredicate(function(_, id)
-        return configID == id;
-    end);
+function TLM:ApplyBlizzardLoadout(configID, autoApply, onAfterChangeCallback)
+    self.BlizzardLoadoutChanger:SelectLoadout(configID, autoApply, onAfterChangeCallback);
 end
 
 --- @param loadoutInfo TalentLoadoutManager_LoadoutInfo

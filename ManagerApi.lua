@@ -248,8 +248,7 @@ function CharacterAPI:LoadLoadout(loadoutID, autoApply)
     end
 
     if displayInfo.playerIsOwner and displayInfo.isBlizzardLoadout then
-        -- disabling autoApply is not supported for blizzard loadouts (yet)
-        return TLM:ApplyBlizzardLoadout(displayInfo.id);
+        return TLM:ApplyBlizzardLoadout(displayInfo.id, autoApply);
     end
 
     local loadoutInfo = displayInfo.loadoutInfo;
