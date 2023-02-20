@@ -159,10 +159,7 @@ function Module:SetupHook()
     if not self.SideBar then
         self.SideBar, self.DataProvider = self:CreateSideBar();
         self.DropDown = self:InitDropDown(self.SideBar);
-
-        EventUtil.ContinueOnAddOnLoaded('BlizzMove', function()
-            self:IntegrateWithBlizzMove();
-        end);
+        self:TryIntegrateWithBlizzMove();
     end
     if not self.importDialog then
         self.importDialog = self:CreateImportDialog();
@@ -694,7 +691,9 @@ function Module:ShowConfigDialog()
     ns.Config:OpenConfigDialog();
 end
 
-function Module:IntegrateWithBlizzMove()
+function Module:TryIntegrateWithBlizzMove()
+    if not IsAddOnLoaded('BlizzMove') then return; end
+
     local compatible = false;
     if(BlizzMoveAPI and BlizzMoveAPI.GetVersion and BlizzMoveAPI.RegisterAddOnFrames) then
         local _, _, _, _, versionInt = BlizzMoveAPI:GetVersion()
