@@ -350,6 +350,7 @@ function TLM:UpdateCustomLoadout(customLoadoutID, selectedNodes, classIDOrNil, s
         }
         self.loadoutByIDCache[customLoadoutID] = displayInfo;
         self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, customLoadoutID, displayInfo);
+        self:TryShowLoadoutCompleteAnimation();
     end
 end
 
@@ -922,4 +923,15 @@ function TLM:BuildSerializedSelectedNodesFromImportString(importText, classIDOrN
     end
 
     return serialized;
+end
+
+function TLM:TryShowLoadoutCompleteAnimation()
+    if
+        ClassTalentFrame
+        and ClassTalentFrame.TalentsTab
+        and ClassTalentFrame.TalentsTab:IsShown()
+        and ClassTalentFrame.TalentsTab.SetCommitCompleteVisualsActive
+    then
+        ClassTalentFrame.TalentsTab:SetCommitCompleteVisualsActive(true);
+    end
 end
