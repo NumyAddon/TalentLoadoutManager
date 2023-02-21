@@ -4,12 +4,13 @@ local addonName, ns = ...;
 local TLM = LibStub("AceAddon-3.0"):NewAddon(addonName, "AceConsole-3.0", "AceEvent-3.0", "AceHook-3.0");
 ns.TLM = TLM;
 
+_G.TalentLoadoutManager = TLM;
+
 local SERIALIZATION_NODE_SEPARATOR = "\n";
 --- format: nodeID_entryID_spellID_rank
 local SERIALIZATION_VALUE_SEPARATOR = "_";
 
 --@debug@
-_G.TalentLoadoutManager = TLM;
 if not _G.TLM then _G.TLM = TLM; end
 --@end-debug@
 
