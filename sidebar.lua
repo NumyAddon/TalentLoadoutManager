@@ -328,7 +328,8 @@ function Module:CreateImportDialog()
 
     dialog:OnLoad();
     dialog:SetScript("OnShow", function()
-        dialog.ImportIntoCurrentLoadoutCheckbox:SetShown(not self.activeLoadout.isBlizzardLoadout);
+        local shouldShowImportIntoCurrent = self.activeLoadout and not not self.activeLoadout.isBlizzardLoadout
+        dialog.ImportIntoCurrentLoadoutCheckbox:SetShown(shouldShowImportIntoCurrent);
         dialog.AutoApplyCheckbox:SetChecked(Config:GetConfig('autoApply'));
     end);
     dialog:SetScript("OnHide", dialog.OnHide);

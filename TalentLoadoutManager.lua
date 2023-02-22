@@ -6,14 +6,18 @@ ns.TLM = TLM;
 
 _G.TalentLoadoutManager = TLM;
 
-local SERIALIZATION_NODE_SEPARATOR = "\n";
+ns.SERIALIZATION_NODE_SEPARATOR = "\n";
 --- format: nodeID_entryID_spellID_rank
-local SERIALIZATION_VALUE_SEPARATOR = "_";
+ns.SERIALIZATION_VALUE_SEPARATOR = "_";
+local SERIALIZATION_NODE_SEPARATOR = ns.SERIALIZATION_NODE_SEPARATOR;
+local SERIALIZATION_VALUE_SEPARATOR = ns.SERIALIZATION_VALUE_SEPARATOR;
 
 --@debug@
 if not _G.TLM then _G.TLM = TLM; end
 --@end-debug@
 
+--- @type TalentLoadoutManager_ImportExport
+local ImportExport = ns.ImportExport;
 
 TLM.Event = {
     --- payload: classID, specID, loadoutID, loadoutInfo
@@ -49,10 +53,7 @@ TLM.Event = {
 --- @field spellID number
 --- @field rank number
 
-
-local LOADOUT_SERIALIZATION_VERSION = 1;
 function TLM:OnInitialize()
-    LOADOUT_SERIALIZATION_VERSION = C_Traits.GetLoadoutSerializationVersion and C_Traits.GetLoadoutSerializationVersion() or LOADOUT_SERIALIZATION_VERSION;
     Mixin(self, CallbackRegistryMixin);
     CallbackRegistryMixin.OnLoad(self);
 
@@ -678,15 +679,21 @@ function TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specI
     return newLoadoutInfo;
 end
 
-function TLM:CreateCustomLoadoutFromImportString(importString, autoApply, name, classIDOrNil, specIDOrNil)
-    local selectedNodes, errorOrNil = self:BuildSerializedSelectedNodesFromImportString(importString, classIDOrNil, specIDOrNil);
+function TLM:CreateCustomLoadoutFromImportString(importString, autoApply, name, validateClassAndSpec)
+    local classIDOrNil, specIDOrNil;
+    if validateClassAndSpec then
+        classIDOrNil, specIDOrNil = self.playerClassID, self.playerSpecID;
+    end
+    local selectedNodes, errorOrNil, classID, specID = self:BuildSerializedSelectedNodesFromImportString(importString, classIDOrNil, specIDOrNil);
     if selectedNodes then
         local loadoutInfo = {
             name = name,
             selectedNodes = selectedNodes,
         }
-        loadoutInfo = self:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specIDOrNil);
-        self:ApplyCustomLoadout(loadoutInfo, autoApply);
+        loadoutInfo = self:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classID, specID);
+        if classID == self.playerClassID and specID == self.playerSpecID then
+            self:ApplyCustomLoadout(loadoutInfo, autoApply);
+        end
 
         return loadoutInfo;
     end
@@ -787,143 +794,13 @@ function TLM:DeleteBlizzardLoadout(configID)
 end
 
 function TLM:ExportLoadoutToString(classIDOrNil, specIDOrNil, loadoutInfo)
-    local LOADOUT_SERIALIZATION_VERSION = 1;
-
     local deserialized = self:DeserializeLoadout(loadoutInfo.selectedNodes);
-    local classID = tonumber(classIDOrNil) or self.playerClassID;
-    local specID = tonumber(specIDOrNil) or self.playerSpecID;
 
-    if specID ~= self.playerSpecID then
-        self:Print("Exporting loadouts from other specs is not yet supported.");
-
-        return false;
-    end
-
-    if not ClassTalentFrame then
-        ClassTalentFrame_LoadUI();
-    end
-    local talentsTab = ClassTalentFrame.TalentsTab;
-    local exportStream = ExportUtil.MakeExportDataStream();
-    local treeID = self:GetTreeID();
-
-    -- write header
-    exportStream:AddValue(talentsTab.bitWidthHeaderVersion, LOADOUT_SERIALIZATION_VERSION);
-    exportStream:AddValue(talentsTab.bitWidthSpecID, specID);
-    -- treeHash is a 128bit hash, passed as an array of 16, 8-bit values
-    -- empty tree hash will disable validation on import
-    exportStream:AddValue(8 * 16, 0);
-
-    self:WriteLoadoutContent(exportStream, deserialized, treeID, talentsTab);
-
-    return exportStream:GetExportString();
+    return ImportExport:ExportLoadoutToString(classIDOrNil, specIDOrNil, deserialized);
 end
 
-function TLM:WriteLoadoutContent(exportStream, deserialized, treeID, talentsTab)
-    local configID = C_ClassTalents.GetActiveConfigID();
-    local treeNodes = C_Traits.GetTreeNodes(treeID);
-
-    local deserializedByNodeID = {};
-    for _, info in pairs(deserialized) do
-        local nodeID, _ = self:GetNodeAndEntryBySpellID(info.spellID);
-        deserializedByNodeID[nodeID] = info;
-    end
-
-    for _, nodeID in pairs(treeNodes) do
-        local info = deserializedByNodeID[nodeID];
-        exportStream:AddValue(1, info and 1 or 0);
-        if info then
-            local nodeInfo = C_Traits.GetNodeInfo(configID, nodeID);
-            local isPartiallyRanked = nodeInfo and nodeInfo.maxRanks ~= info.rank
-            exportStream:AddValue(1, isPartiallyRanked and 1 or 0);
-            if isPartiallyRanked then
-                exportStream:AddValue(talentsTab.bitWidthRanksPurchased, info.rank);
-            end
-
-            local isChoiceNode = nodeInfo and nodeInfo.type == Enum.TraitNodeType.Selection;
-            exportStream:AddValue(1, isChoiceNode and 1 or 0);
-            if isChoiceNode then
-                local entryIndex = 0;
-                for i, entry in ipairs(nodeInfo and nodeInfo.entryIDs or {}) do
-                    if entry == info.entryID then
-                        entryIndex = i;
-                        break;
-                    end
-                end
-
-                exportStream:AddValue(2, entryIndex - 1);
-            end
-        end
-    end
-end
-
-function TLM:BuildSerializedSelectedNodesFromImportString(importText, classIDOrNil, specIDOrNil)
-    local classID = tonumber(classIDOrNil) or self.playerClassID;
-    local specID = tonumber(specIDOrNil) or self.playerSpecID;
-
-    if specID ~= self.playerSpecID then
-        -- note to self: this will require LibTalentTree to be able to handle other specs/classes
-
-        return false, "Importing loadouts from other specs is not yet supported.";
-    end
-
-    local ImportExportMixin = ClassTalentImportExportMixin;
-
-    local importStream = ExportUtil.MakeImportDataStream(importText);
-
-    local headerValid, serializationVersion, specIDFromString, treeHash = ImportExportMixin:ReadLoadoutHeader(importStream);
-
-    if(not headerValid) then
-        return false, LOADOUT_ERROR_BAD_STRING;
-    end
-
-    if(serializationVersion ~= LOADOUT_SERIALIZATION_VERSION) then
-        return false, LOADOUT_ERROR_SERIALIZATION_VERSION_MISMATCH;
-    end
-
-    if(specIDFromString ~= specID) then
-        return false, LOADOUT_ERROR_WRONG_SPEC;
-    end
-
-    local treeID = self:GetTreeID();
-    if not ImportExportMixin:IsHashEmpty(treeHash) then
-        -- allow third-party sites to generate loadout strings with an empty tree hash, which bypasses hash validation
-        if not ImportExportMixin:HashEquals(treeHash, C_Traits.GetTreeHash(treeID)) then
-            return false, LOADOUT_ERROR_TREE_CHANGED;
-        end
-    end
-
-    local loadoutContent = ImportExportMixin:ReadLoadoutContent(importStream, treeID);
-
-    local configID = C_ClassTalents.GetActiveConfigID();
-    local serialized = "";
-    --- format: nodeID_entryID_spellID_rank
-    local vSep = SERIALIZATION_VALUE_SEPARATOR;
-    local nSep = SERIALIZATION_NODE_SEPARATOR;
-    local formatString = "%d" .. vSep .. "%d" .. vSep .. "%d" .. vSep .. "%d" .. nSep;
-
-    local nodes = C_Traits.GetTreeNodes(treeID);
-    for i, nodeID in pairs(nodes) do
-        local indexInfo = loadoutContent[i];
-        if indexInfo.isNodeSelected then
-            local nodeInfo = C_Traits.GetNodeInfo(configID, nodeID);
-            local entryID = indexInfo.isChoiceNode and nodeInfo.entryIDs[indexInfo.choiceNodeSelection] or nodeInfo.entryIDs[1];
-            local entryInfo = C_Traits.GetEntryInfo(configID, entryID);
-            if entryInfo and entryInfo.definitionID then
-                local definitionInfo = C_Traits.GetDefinitionInfo(entryInfo.definitionID);
-                if definitionInfo.spellID then
-                    serialized = serialized .. string.format(
-                        formatString,
-                        nodeID,
-                        entryID,
-                        definitionInfo.spellID,
-                        indexInfo.isPartiallyRanked and indexInfo.partialRanksPurchased or nodeInfo.maxRanks
-                    );
-                end
-            end
-        end
-    end
-
-    return serialized;
+function TLM:BuildSerializedSelectedNodesFromImportString(importText, expectedClassID, expectedSpecID)
+    return ImportExport:BuildSerializedSelectedNodesFromImportString(importText, expectedClassID, expectedSpecID);
 end
 
 function TLM:TryShowLoadoutCompleteAnimation()

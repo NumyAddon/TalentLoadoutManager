@@ -10,6 +10,7 @@
 
 libs\embeds.xml
 
+ImportExport.lua
 TalentLoadoutManager.lua
 ManagerApi.lua
 BlizzardLoadoutChanger.lua

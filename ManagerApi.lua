@@ -284,7 +284,8 @@ end
 --- @param autoApply boolean - if true, the talent changes will be applied immediately, if false, they are left pending
 --- @return TalentLoadoutManagerAPI_LoadoutInfo, string|nil - the new loadout info, second return value is the error message if there was an error
 function CharacterAPI:ImportCustomLoadout(importText, loadoutName, autoApply)
-    local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, autoApply, loadoutName);
+    local validateClassAndSpec = true;
+    local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, autoApply, loadoutName, validateClassAndSpec);
 
     return newLoadoutInfo and GlobalAPI:GetLoadoutInfoByID(newLoadoutInfo.id), errorOrNil;
 end
