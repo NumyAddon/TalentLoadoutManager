@@ -19,6 +19,9 @@ if not _G.TLM then _G.TLM = TLM; end
 --- @type TalentLoadoutManager_ImportExport
 local ImportExport = ns.ImportExport;
 
+--- @type LibTalentTree
+local LibTT = LibStub("LibTalentTree-1.0");
+
 TLM.Event = {
     --- payload: classID, specID, loadoutID, loadoutInfo
     CustomLoadoutApplied = "CustomLoadoutApplied",
@@ -220,25 +223,37 @@ function TLM:GetTreeID()
     return configInfo and configInfo.treeIDs and configInfo.treeIDs[1];
 end
 
+function TLM:GetTreeNodes(treeID)
+    if not self.treeNodeCache or not self.treeNodeCache[treeID] then
+        self.treeNodeCache = self.treeNodeCache or {};
+        self.treeNodeCache[treeID] = C_Traits.GetTreeNodes(treeID);
+    end
+
+    return self.treeNodeCache[treeID];
+end
+
 --- @param spellID number
 --- @return (nil|number, nil|number) nodeID, entryID - nil if not found or error
-function TLM:GetNodeAndEntryBySpellID(spellID)
-    if not self.spellNodeMap then
-        local configID = C_ClassTalents.GetActiveConfigID();
-        if configID == nil then return; end
+function TLM:GetNodeAndEntryBySpellID(spellID, classID, specID)
+    if
+        not self.spellNodeMap
+        or not self.spellNodeMap[classID]
+        or not self.spellNodeMap[classID][specID]
+    then
+        self.spellNodeMap = self.spellNodeMap or {};
+        self.spellNodeMap[classID] = self.spellNodeMap[classID] or {};
+        self.spellNodeMap[classID][specID] = self.spellNodeMap[classID][specID] or {};
 
-        self.spellNodeMap = {};
-
-        local treeID  = self:GetTreeID();
-        local nodes = C_Traits.GetTreeNodes(treeID);
+        local treeID  = LibTT:GetClassTreeId(classID);
+        local nodes = self:GetTreeNodes(treeID);
         for _, nodeID in pairs(nodes) do
-            local nodeInfo = C_Traits.GetNodeInfo(configID, nodeID);
+            local nodeInfo = LibTT:GetNodeInfo(treeID, nodeID);
             for _, entryID in pairs(nodeInfo.entryIDs) do
-                local entryInfo = C_Traits.GetEntryInfo(configID, entryID);
+                local entryInfo = LibTT:GetEntryInfo(treeID, entryID);
                 if entryInfo and entryInfo.definitionID then
                     local definitionInfo = C_Traits.GetDefinitionInfo(entryInfo.definitionID);
                     if definitionInfo.spellID then
-                        self.spellNodeMap[definitionInfo.spellID] = {
+                        self.spellNodeMap[classID][specID][definitionInfo.spellID] = {
                             nodeID = nodeID,
                             entryID = entryID,
                         };
@@ -248,9 +263,11 @@ function TLM:GetNodeAndEntryBySpellID(spellID)
         end
     end
 
-    local result = self.spellNodeMap[spellID];
+    local result = self.spellNodeMap[classID][specID][spellID];
     if result then
         return result.nodeID, result.entryID;
+    else
+        ViragDevTool_AddData({spellID=spellID, classID=classID, specID=specID, map=self.spellNodeMap}, "TLM:GetNodeAndEntryBySpellID");
     end
 end
 
@@ -366,7 +383,7 @@ function TLM:SerializeLoadout(configID)
     local formatString = "%d" .. vSep .. "%d" .. vSep .. "%d" .. vSep .. "%d" .. nSep;
 
     local treeID = self:GetTreeID();
-    local nodes = C_Traits.GetTreeNodes(treeID);
+    local nodes = self:GetTreeNodes(treeID);
     for _, nodeID in pairs(nodes) do
         local nodeInfo = C_Traits.GetNodeInfo(configID, nodeID);
         local entryID = nodeInfo.activeEntry and nodeInfo.activeEntry.entryID;
@@ -450,7 +467,7 @@ function TLM:LoadoutInfoToEntryInfo(loadoutInfo)
 
         local nodeID, entryID = loadoutNodeInfo.nodeID, loadoutNodeInfo.entryID;
         if not nodeInfoExists then
-            nodeID, entryID = self:GetNodeAndEntryBySpellID(loadoutNodeInfo.spellID);
+            nodeID, entryID = self:GetNodeAndEntryBySpellID(loadoutNodeInfo.spellID, self.playerClassID, self.playerSpecID);
             isChoiceNode = self:IsChoiceNode(nodeID);
         end
         if nodeID and entryID then

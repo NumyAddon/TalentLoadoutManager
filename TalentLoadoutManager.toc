@@ -16,5 +16,6 @@ ManagerApi.lua
 BlizzardLoadoutChanger.lua
 config.lua
 sidebar.lua
+TalentTreeViewerSidebar.lua
 
 SimulationCraft.lua

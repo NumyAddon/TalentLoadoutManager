@@ -196,19 +196,19 @@ function ImportExport:ExportLoadoutToString(classIDOrNil, specIDOrNil, deseriali
     -- empty tree hash will disable validation on import
     exportStream:AddValue(8 * 16, 0);
 
-    self:WriteLoadoutContent(exportStream, deserializedLoadout, treeID);
+    self:WriteLoadoutContent(exportStream, deserializedLoadout, treeID, classID, specID);
 
     return exportStream:GetExportString();
 end
 
-function ImportExport:WriteLoadoutContent(exportStream, deserialized, treeID)
+function ImportExport:WriteLoadoutContent(exportStream, deserialized, treeID, classID, specID)
     --- @type TalentLoadoutManager
     local TLM = ns.TLM;
     local treeNodes = GetTreeNodes(treeID);
 
     local deserializedByNodeID = {};
     for _, info in pairs(deserialized) do
-        local nodeID, _ = TLM:GetNodeAndEntryBySpellID(info.spellID);
+        local nodeID, _ = TLM:GetNodeAndEntryBySpellID(info.spellID, classID, specID);
         deserializedByNodeID[nodeID] = info;
     end
 
