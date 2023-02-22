@@ -353,7 +353,7 @@ function Module:CreateSideBar()
     -- add a title
     sideBar.Title = sideBar:CreateFontString(nil, "OVERLAY", "GameFontNormal");
     sideBar.Title:SetPoint("TOPLEFT", sideBar, "TOPLEFT", 10, -10);
-    sideBar.Title:SetText("Talent Loadout Manager (BETA)");
+    sideBar.Title:SetText("Talent Loadout Manager");
 
     -- add Create button
     sideBar.CreateButton = CreateFrame("Button", nil, sideBar, "UIPanelButtonTemplate, UIButtonTemplate");
