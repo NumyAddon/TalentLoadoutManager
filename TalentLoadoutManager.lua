@@ -156,7 +156,7 @@ end
 
 function TLM:ACTIVE_PLAYER_SPECIALIZATION_CHANGED()
     self.playerSpecID = PlayerUtil.GetCurrentSpecID();
-    self.spellNodeMap = nil;
+    self:TriggerEvent(self.Event.LoadoutListUpdated);
 end
 
 function TLM:RebuildLoadoutByIDCache()
