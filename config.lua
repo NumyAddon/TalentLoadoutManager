@@ -55,6 +55,14 @@ function Config:GetOptions()
                 descStyle = "inline",
                 width = "full",
             },
+            leftAlign = {
+                order = orderCount(),
+                type = "toggle",
+                name = "Left Align (requires /reload ui)",
+                desc = "Align the menu to the left of the talent tree (requires /reload ui)",
+                descStyle = "inline",
+                width = "full",
+            },
         },
     }
 

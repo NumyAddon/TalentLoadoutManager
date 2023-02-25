@@ -204,7 +204,13 @@ function Module:UpdatePosition(frame)
 
     if replacePoint then
         frame:ClearAllPoints();
-        frame:SetPoint("TOP", UIParent, "TOP", self.SideBar:GetWidth() / 2, yOfs);
+
+        local leftAlign = 1;
+        if not Config:GetConfig('leftAlign') then 
+            leftAlign = -1;
+        end
+
+        frame:SetPoint("TOP", UIParent, "TOP", leftAlign * (self.SideBar:GetWidth() / 2), yOfs);
     end
 end
 
@@ -343,7 +349,12 @@ function Module:CreateSideBar()
 
     sideBar:SetHeight(ClassTalentFrame.TalentsTab:GetHeight());
     sideBar:SetWidth(width);
-    sideBar:SetPoint("TOPRIGHT", ClassTalentFrame.TalentsTab, "TOPLEFT", 0, 0);
+
+    if Config:GetConfig('leftAlign') then 
+        sideBar:SetPoint("TOPRIGHT", ClassTalentFrame.TalentsTab, "TOPLEFT", 0, 0);
+    else
+        sideBar:SetPoint("TOPLEFT", ClassTalentFrame.TalentsTab, "TOPRIGHT", 0, 0);
+    end
 
     -- add a background
     sideBar.Background = sideBar:CreateTexture(nil, "BACKGROUND");
