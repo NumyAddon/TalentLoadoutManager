@@ -247,16 +247,18 @@ function TLM:GetNodeAndEntryBySpellID(spellID, classID, specID)
         local treeID  = LibTT:GetClassTreeId(classID);
         local nodes = self:GetTreeNodes(treeID);
         for _, nodeID in pairs(nodes) do
-            local nodeInfo = LibTT:GetNodeInfo(treeID, nodeID);
-            for _, entryID in pairs(nodeInfo.entryIDs) do
-                local entryInfo = LibTT:GetEntryInfo(treeID, entryID);
-                if entryInfo and entryInfo.definitionID then
-                    local definitionInfo = C_Traits.GetDefinitionInfo(entryInfo.definitionID);
-                    if definitionInfo.spellID then
-                        self.spellNodeMap[classID][specID][definitionInfo.spellID] = {
-                            nodeID = nodeID,
-                            entryID = entryID,
-                        };
+            local nodeInfo = LibTT:IsNodeVisibleForSpec(specID, nodeID) and LibTT:GetNodeInfo(treeID, nodeID);
+            if nodeInfo and nodeInfo.entryIDs then
+                for _, entryID in pairs(nodeInfo.entryIDs) do
+                    local entryInfo = LibTT:GetEntryInfo(treeID, entryID);
+                    if entryInfo and entryInfo.definitionID then
+                        local definitionInfo = C_Traits.GetDefinitionInfo(entryInfo.definitionID);
+                        if definitionInfo.spellID then
+                            self.spellNodeMap[classID][specID][definitionInfo.spellID] = {
+                                nodeID = nodeID,
+                                entryID = entryID,
+                            };
+                        end
                     end
                 end
             end
@@ -266,8 +268,6 @@ function TLM:GetNodeAndEntryBySpellID(spellID, classID, specID)
     local result = self.spellNodeMap[classID][specID][spellID];
     if result then
         return result.nodeID, result.entryID;
-    else
-        ViragDevTool_AddData({spellID=spellID, classID=classID, specID=specID, map=self.spellNodeMap}, "TLM:GetNodeAndEntryBySpellID");
     end
 end
 
