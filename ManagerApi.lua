@@ -188,8 +188,8 @@ end
 --- @param loadoutName string - the name of the new loadout
 --- @return TalentLoadoutManagerAPI_LoadoutInfo|boolean, string|nil - the new loadout info, or false if there was an error; second return value is the error message if there was an error
 function GlobalAPI:ImportCustomLoadout(importText, loadoutName)
-    local autoApply = false;
-    local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, autoApply, loadoutName);
+    local autoApply, validateClassAndSpec, load = false, false, false;
+    local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, autoApply, loadoutName, validateClassAndSpec, load);
 
     return newLoadoutInfo and self:GetLoadoutInfoByID(newLoadoutInfo.id) or false, errorOrNil;
 end
@@ -284,8 +284,8 @@ end
 --- @param autoApply boolean - if true, the talent changes will be applied immediately, if false, they are left pending
 --- @return TalentLoadoutManagerAPI_LoadoutInfo, string|nil - the new loadout info, second return value is the error message if there was an error
 function CharacterAPI:ImportCustomLoadout(importText, loadoutName, autoApply)
-    local validateClassAndSpec = true;
-    local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, autoApply, loadoutName, validateClassAndSpec);
+    local validateClassAndSpec, load = true, true;
+    local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, autoApply, loadoutName, validateClassAndSpec, load);
 
     return newLoadoutInfo and GlobalAPI:GetLoadoutInfoByID(newLoadoutInfo.id), errorOrNil;
 end

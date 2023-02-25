@@ -312,7 +312,7 @@ function Module:CreateImportDialog()
 
             if result then
                 StaticPopupSpecial_Hide(self);
-                self:TryShowLoadoutCompleteAnimation();
+                Module:TryShowLoadoutCompleteAnimation();
             elseif errorOrNil then
                 StaticPopup_Show(Module.genericPopupDialogName, ERROR_COLOR:WrapTextInColorCode(errorOrNil));
             end

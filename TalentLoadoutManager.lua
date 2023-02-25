@@ -696,7 +696,7 @@ function TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specI
     return newLoadoutInfo;
 end
 
-function TLM:CreateCustomLoadoutFromImportString(importString, autoApply, name, validateClassAndSpec)
+function TLM:CreateCustomLoadoutFromImportString(importString, autoApply, name, validateClassAndSpec, load)
     local classIDOrNil, specIDOrNil;
     if validateClassAndSpec then
         classIDOrNil, specIDOrNil = self.playerClassID, self.playerSpecID;
@@ -708,7 +708,7 @@ function TLM:CreateCustomLoadoutFromImportString(importString, autoApply, name, 
             selectedNodes = selectedNodes,
         }
         loadoutInfo = self:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classID, specID);
-        if classID == self.playerClassID and specID == self.playerSpecID then
+        if load and classID == self.playerClassID and specID == self.playerSpecID then
             self:ApplyCustomLoadout(loadoutInfo, autoApply);
         end
 
