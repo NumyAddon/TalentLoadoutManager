@@ -15,7 +15,9 @@ TalentLoadoutManager.lua
 ManagerApi.lua
 BlizzardLoadoutChanger.lua
 config.lua
-sidebar.lua
+
+SideBarMixin.lua
+DefaultUISidebar.lua
 TalentTreeViewerSidebar.lua
 
 SimulationCraft.lua

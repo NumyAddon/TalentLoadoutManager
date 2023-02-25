@@ -183,6 +183,18 @@ function GlobalAPI:DeleteLoadout(loadoutID)
     end
 end
 
+function GlobalAPI:RemoveLoadoutFromStorage(loadoutID)
+    if IsLoadoutIDCustomLoadout(loadoutID) then
+        return self:DeleteLoadout(loadoutID);
+    end
+    local displayInfo = TLM:GetLoadoutByID(loadoutID);
+    if not displayInfo then
+        return false;
+    end
+
+    return TLM:RemoveStoredBlizzardLoadout(displayInfo.classID, displayInfo.specID, displayInfo.owner, loadoutID);
+end
+
 --- Create a new Custom Loadout from an import string
 --- @param importText string - the import string
 --- @param loadoutName string - the name of the new loadout

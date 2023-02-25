@@ -369,7 +369,6 @@ function TLM:UpdateCustomLoadout(customLoadoutID, selectedNodes, classIDOrNil, s
         }
         self.loadoutByIDCache[customLoadoutID] = displayInfo;
         self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, customLoadoutID, displayInfo);
-        self:TryShowLoadoutCompleteAnimation();
     end
 end
 
@@ -810,6 +809,19 @@ function TLM:DeleteBlizzardLoadout(configID)
     return true;
 end
 
+function TLM:RemoveStoredBlizzardLoadout(classID, specID, owner, configID)
+    if
+        self.db.blizzardLoadouts[classID]
+        and self.db.blizzardLoadouts[classID][specID]
+        and self.db.blizzardLoadouts[classID][specID][owner]
+        and self.db.blizzardLoadouts[classID][specID][owner][configID]
+    then
+        self.db.blizzardLoadouts[classID][specID][owner][configID] = nil;
+
+        self:TriggerEvent(self.Event.LoadoutListUpdated);
+    end
+end
+
 function TLM:ExportLoadoutToString(classIDOrNil, specIDOrNil, loadoutInfo)
     local deserialized = self:DeserializeLoadout(loadoutInfo.selectedNodes);
 
@@ -818,15 +830,4 @@ end
 
 function TLM:BuildSerializedSelectedNodesFromImportString(importText, expectedClassID, expectedSpecID)
     return ImportExport:BuildSerializedSelectedNodesFromImportString(importText, expectedClassID, expectedSpecID);
-end
-
-function TLM:TryShowLoadoutCompleteAnimation()
-    if
-        ClassTalentFrame
-        and ClassTalentFrame.TalentsTab
-        and ClassTalentFrame.TalentsTab:IsShown()
-        and ClassTalentFrame.TalentsTab.SetCommitCompleteVisualsActive
-    then
-        ClassTalentFrame.TalentsTab:SetCommitCompleteVisualsActive(true);
-    end
 end
