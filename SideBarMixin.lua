@@ -762,7 +762,7 @@ function Module:ShowConfigDialog()
 end
 
 function Module:TryIntegrateWithBlizzMove()
-    if not self.integrateWithBlizzMove or not IsAddOnLoaded('BlizzMove') then return; end
+    if not self.IntegrateWithBlizzMove or not IsAddOnLoaded('BlizzMove') then return; end
 
     local compatible = false;
     if(BlizzMoveAPI and BlizzMoveAPI.GetVersion and BlizzMoveAPI.RegisterAddOnFrames) then

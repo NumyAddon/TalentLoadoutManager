@@ -12,9 +12,12 @@ TLM.TTVSideBarModule = Module;
 local parentMixin = ns.SideBarMixin;
 Mixin(Module, parentMixin);
 
-Module.implementAutoApply = false;
+Module.IntegrateWithBlizzMove = true;
+Module.ImplementAutoApply = false;
 Module.ShowAnimationOnImport = true;
-Module.implementTTTMissingWarning = false;
+Module.ImplementTTTMissingWarning = false;
+Module.ShowLoadAndApply = false;
+Module.ShowShowInTTV = false;
 
 function Module:OnEnable()
     EventUtil.ContinueOnAddOnLoaded("TalentTreeViewer", function()

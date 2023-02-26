@@ -17,6 +17,7 @@ TLM.SideBarModule = Module;
 local parentMixin = ns.SideBarMixin;
 Mixin(Module, parentMixin);
 
+Module.IntegrateWithBlizzMove = true;
 Module.ImplementAutoApply = true;
 Module.ShowAnimationOnImport = false;
 Module.ImplementTTTMissingWarning = true;
