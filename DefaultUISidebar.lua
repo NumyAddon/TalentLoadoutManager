@@ -20,7 +20,7 @@ Mixin(Module, parentMixin);
 Module.IntegrateWithBlizzMove = true;
 Module.ImplementAutoApply = true;
 Module.ShowAnimationOnImport = false;
-Module.ImplementTTTMissingWarning = true;
+Module.ImplementTTTMissingWarning = false;
 Module.ShowLoadAndApply = true;
 Module.ShowShowInTTV = true;
 
