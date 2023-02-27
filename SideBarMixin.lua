@@ -1,10 +1,7 @@
 local addonName, ns = ...;
 
---- @type TalentLoadoutManager
-local TLM = ns.TLM;
-
-local Module = {};
-ns.SideBarMixin = Module;
+local SideBarMixin = {};
+ns.SideBarMixin = SideBarMixin;
 
 --- @type LibUIDropDownMenu
 local LibDD = LibStub:GetLibrary("LibUIDropDownMenu-4.0");
@@ -16,13 +13,13 @@ local Config = ns.Config;
 local API = TalentLoadoutManagerAPI;
 local GlobalAPI = TalentLoadoutManagerAPI.GlobalAPI;
 
-Module.ImplementAutoApply = false;
-Module.ShowAnimationOnImport = false;
-Module.ImplementTTTMissingWarning = false;
-Module.ShowLoadAndApply = false;
-Module.ShowShowInTTV = false;
+SideBarMixin.ImplementAutoApply = false;
+SideBarMixin.ShowAnimationOnImport = false;
+SideBarMixin.ImplementTTTMissingWarning = false;
+SideBarMixin.ShowLoadAndApply = false;
+SideBarMixin.ShowShowInTTV = false;
 
-function Module:OnInitialize()
+function SideBarMixin:OnInitialize()
     local moduleName = self.name;
     self.renameDialogName = moduleName .. "_RenameLoadout";
     StaticPopupDialogs[self.renameDialogName] = {
@@ -163,17 +160,17 @@ function Module:OnInitialize()
     };
 end
 
-function Module:OnEnable()
+function SideBarMixin:OnEnable()
     -- override in implementation: should SetupHook on relevant addonLoaded
 end
 
-function Module:OnDisable()
+function SideBarMixin:OnDisable()
     self:UnhookAll();
 
     API:UnregisterCallback(API.Event.LoadoutListUpdated, self);
 end
 
-function Module:SetupHook()
+function SideBarMixin:SetupHook()
     if not self.SideBar then
         self.SideBar, self.DataProvider = self:CreateSideBar();
         self.DropDown = self:InitDropDown(self.SideBar);
@@ -187,17 +184,17 @@ function Module:SetupHook()
     API:RegisterCallback(API.Event.LoadoutListUpdated, self.RefreshSideBarData, self);
 end
 
-function Module:GetTalentsTab()
+function SideBarMixin:GetTalentsTab()
     -- override in implementation
 end
 
-function Module:OnTalentsTabShow(frame)
+function SideBarMixin:OnTalentsTabShow(frame)
     self:UpdateScaleForFit(frame:GetParent());
     self:UpdatePosition(frame:GetParent());
     self:RefreshSideBarData();
 end
 
-function Module:UpdateScaleForFit(frame)
+function SideBarMixin:UpdateScaleForFit(frame)
     if not Config:GetConfig('autoScale') then return end
 
     local extraHeight = 270;
@@ -209,7 +206,7 @@ function Module:UpdateScaleForFit(frame)
     frame:SetScale(min(horizRatio, vertRatio, 1));
 end
 
-function Module:UpdatePosition(frame)
+function SideBarMixin:UpdatePosition(frame)
     if not Config:GetConfig('autoPosition') then return end
 
     local replacePoint = true;
@@ -229,7 +226,7 @@ function Module:UpdatePosition(frame)
     end
 end
 
-function Module:CreateImportDialog()
+function SideBarMixin:CreateImportDialog()
     --- main dialog
     local dialog = CreateFrame("Frame", nil, UIParent, "ClassTalentLoadoutDialogTemplate");
     dialog.titleText = "Import Custom Loadout";
@@ -326,25 +323,25 @@ function Module:CreateImportDialog()
     cancelButton:SetText(CANCEL);
     cancelButton:SetPoint("BOTTOMLEFT", dialog.ContentArea, "BOTTOM", 5, 0);
 
-    function dialog:OnAccept()
-        if self.AcceptButton:IsEnabled() then
-            local importText = self.ImportControl:GetText();
-            local loadoutName = self.NameControl:GetText();
-            local autoApply = addAutoApplyCheckbox and self.AutoApplyCheckbox:GetChecked();
-            local importIntoCurrentLoadout = self.ImportIntoCurrentLoadoutCheckbox:IsShown() and self.ImportIntoCurrentLoadoutCheckbox:GetChecked();
+    dialog.OnAccept = function(dialog)
+        if dialog.AcceptButton:IsEnabled() then
+            local importText = dialog.ImportControl:GetText();
+            local loadoutName = dialog.NameControl:GetText();
+            local autoApply = addAutoApplyCheckbox and dialog.AutoApplyCheckbox:GetChecked();
+            local importIntoCurrentLoadout = dialog.ImportIntoCurrentLoadoutCheckbox:IsShown() and dialog.ImportIntoCurrentLoadoutCheckbox:GetChecked();
 
             local result, errorOrNil;
             if not importIntoCurrentLoadout then
-                result, errorOrNil = Module:DoImport(importText, loadoutName, autoApply);
+                result, errorOrNil = self:DoImport(importText, loadoutName, autoApply);
             else
-                result, errorOrNil = Module:DoImportIntoCurrent(importText, autoApply);
+                result, errorOrNil = self:DoImportIntoCurrent(importText, autoApply);
             end
 
             if result then
-                StaticPopupSpecial_Hide(self);
-                if Module.ShowAnimationOnImport then Module:TryShowLoadoutCompleteAnimation(); end
+                StaticPopupSpecial_Hide(dialog);
+                if self.ShowAnimationOnImport then self:TryShowLoadoutCompleteAnimation(); end
             elseif errorOrNil then
-                StaticPopup_Show(Module.genericPopupDialogName, ERROR_COLOR:WrapTextInColorCode(errorOrNil));
+                StaticPopup_Show(self.genericPopupDialogName, ERROR_COLOR:WrapTextInColorCode(errorOrNil));
             end
         end
     end
@@ -360,7 +357,7 @@ function Module:CreateImportDialog()
     return dialog;
 end
 
-function Module:CreateSideBar()
+function SideBarMixin:CreateSideBar()
     local talentsTab = self:GetTalentsTab();
     local sideBar = CreateFrame("Frame", nil, talentsTab);
     local width = 300;
@@ -459,7 +456,7 @@ function Module:CreateSideBar()
     return sideBar, dataProvider;
 end
 
-function Module:CreateScrollBox(parentContainer)
+function SideBarMixin:CreateScrollBox(parentContainer)
     local ContainerFrame = CreateFrame("Frame", nil, parentContainer);
 
     ContainerFrame.ScrollBar = CreateFrame("EventFrame", nil, ContainerFrame, "WowTrimScrollBar");
@@ -534,12 +531,12 @@ function Module:CreateScrollBox(parentContainer)
     return ContainerFrame, dataProvider;
 end
 
-function Module:InitDropDown(parentFrame)
+function SideBarMixin:InitDropDown(parentFrame)
     local dropDown = LibDD:Create_UIDropDownMenu(self.name .. "_DropDown", parentFrame);
     return dropDown;
 end
 
-function Module:OpenDropDownMenu(dropDown, frame, elementData)
+function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
     local items = {
         title = {
             text = elementData.displayName,
@@ -636,7 +633,7 @@ function Module:OpenDropDownMenu(dropDown, frame, elementData)
     LibDD:EasyMenu(self.menuList, dropDown, frame, 80, 0);
 end
 
-function Module:SetElementAsActive(frame, elementData)
+function SideBarMixin:SetElementAsActive(frame, elementData)
     self.activeLoadout = elementData;
     if self.activeLoadoutFrame then
         self.activeLoadoutFrame.Background:SetColorTexture(0, 0, 0, 0.5);
@@ -646,7 +643,7 @@ function Module:SetElementAsActive(frame, elementData)
     self.SideBar.SaveButton:SetEnabled(self.activeLoadout and not self.activeLoadout.isBlizzardLoadout);
 end
 
-function Module:OnElementClick(frame, elementData, forceApply)
+function SideBarMixin:OnElementClick(frame, elementData, forceApply)
     self:SetElementAsActive(frame, elementData);
     if forceApply == nil then forceApply = Config:GetConfig('autoApply') end
     local autoApply = forceApply;
@@ -654,7 +651,7 @@ function Module:OnElementClick(frame, elementData, forceApply)
     self:DoLoad(elementData.id, autoApply);
 end
 
-function Module:OnElementRightClick(frame, elementData)
+function SideBarMixin:OnElementRightClick(frame, elementData)
     local dropDown = self.DropDown;
     if dropDown.currentElement ~= elementData.id then
         LibDD:CloseDropDownMenus();
@@ -663,7 +660,7 @@ function Module:OnElementRightClick(frame, elementData)
     self:OpenDropDownMenu(dropDown, frame, elementData);
 end
 
-function Module:ExportLoadout(elementData)
+function SideBarMixin:ExportLoadout(elementData)
     local exportString = GlobalAPI:GetExportString(elementData.id);
     if not exportString then
         return;
@@ -672,7 +669,7 @@ function Module:ExportLoadout(elementData)
     StaticPopup_Show(self.copyDialogName, nil, nil, exportString);
 end
 
-function Module:OpenInTalentTreeViewer(elementData)
+function SideBarMixin:OpenInTalentTreeViewer(elementData)
     local exportString = GlobalAPI:GetExportString(elementData.id);
     if not exportString then
         return;
@@ -684,7 +681,7 @@ function Module:OpenInTalentTreeViewer(elementData)
     TalentViewer:ImportLoadout(exportString);
 end
 
-function Module:SortElements(a, b)
+function SideBarMixin:SortElements(a, b)
     --- order by:
     --- 1. playerIsOwner
     --- 2. isBlizzardLoadout
@@ -722,15 +719,15 @@ function Module:SortElements(a, b)
     return false;
 end
 
-function Module:GetLoadouts()
+function SideBarMixin:GetLoadouts()
     -- override in implementation
 end
 
-function Module:GetActiveLoadout(forceRefresh)
+function SideBarMixin:GetActiveLoadout(forceRefresh)
     -- override in implementation
 end
 
-function Module:RefreshSideBarData()
+function SideBarMixin:RefreshSideBarData()
     local dataProvider = self.DataProvider;
     dataProvider:Flush();
 
@@ -757,11 +754,11 @@ function Module:RefreshSideBarData()
     self.SideBar.SaveButton:SetEnabled(self.activeLoadout and not self.activeLoadout.isBlizzardLoadout);
 end
 
-function Module:ShowConfigDialog()
+function SideBarMixin:ShowConfigDialog()
     ns.Config:OpenConfigDialog();
 end
 
-function Module:TryIntegrateWithBlizzMove()
+function SideBarMixin:TryIntegrateWithBlizzMove()
     if not self.IntegrateWithBlizzMove or not IsAddOnLoaded('BlizzMove') then return; end
 
     local compatible = false;
@@ -782,7 +779,7 @@ function Module:TryIntegrateWithBlizzMove()
     BlizzMoveAPI:RegisterAddOnFrames(frameTable);
 end
 
-function Module:TryShowLoadoutCompleteAnimation()
+function SideBarMixin:TryShowLoadoutCompleteAnimation()
     local talentsTab = self:GetTalentsTab();
     if talentsTab:IsShown() and talentsTab.SetCommitCompleteVisualsActive then
         talentsTab:SetCommitCompleteVisualsActive(true);
