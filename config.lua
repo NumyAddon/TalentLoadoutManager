@@ -58,14 +58,14 @@ function Config:GetOptions()
         },
     }
 
-    if not IsAddOnLoaded('TalentTreeTweaks') then
-        options.args.disableTTTWarning = {
-            order = orderCount(),
-            type = "toggle",
-            name = "Disable TTT is missing warning",
-            desc = "Disable the warning that appears when TalentTreeTweaks is not installed.",
-        };
-    end
+    --if not IsAddOnLoaded('TalentTreeTweaks') then
+    --    options.args.disableTTTWarning = {
+    --        order = orderCount(),
+    --        type = "toggle",
+    --        name = "Disable TTT is missing warning",
+    --        desc = "Disable the warning that appears when TalentTreeTweaks is not installed.",
+    --    };
+    --end
 
     return options
 end
@@ -103,8 +103,13 @@ function Config:IsOptionDisabled(option)
     return false;
 end
 
-function Config:GetConfig(option)
-    return not self:IsOptionDisabled(option) and TLM.db.config[option];
+function Config:GetConfig(option, default)
+    local value = not self:IsOptionDisabled(option) and TLM.db.config[option];
+    if nil == value then
+        value = default;
+    end
+
+    return value;
 end
 
 function Config:SetConfig(option, value)
