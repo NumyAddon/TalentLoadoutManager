@@ -67,7 +67,7 @@ local function IsLoadoutIDCustomLoadout(loadoutID)
     return type(loadoutID) == "string" and loadoutID:sub(1, 2) == "C_";
 end
 
-EventUtil.ContinueOnAddOnLoaded(addonName, function()
+do
     Mixin(API, CallbackRegistryMixin);
     CallbackRegistryMixin.OnLoad(API);
 
@@ -80,7 +80,7 @@ EventUtil.ContinueOnAddOnLoaded(addonName, function()
     TLM:RegisterCallback(TLM.Event.LoadoutListUpdated, function(self)
         self:TriggerEvent(self.Event.LoadoutListUpdated);
     end, API);
-end);
+end
 
 
 -------------------------------------------------------------------------

@@ -35,6 +35,11 @@ TLM.Event = {
     LoadoutListUpdated = "LoadoutListUpdated",
 };
 
+do
+    Mixin(TLM, CallbackRegistryMixin);
+    CallbackRegistryMixin.OnLoad(TLM);
+end
+
 --- @alias TalentLoadoutManager_LoadoutDisplayInfo
 --- @field id number|string  - custom loadouts are prefixed with "C_" to avoid collisions with blizzard loadouts
 --- @field displayName string
@@ -57,9 +62,6 @@ TLM.Event = {
 --- @field rank number
 
 function TLM:OnInitialize()
-    Mixin(self, CallbackRegistryMixin);
-    CallbackRegistryMixin.OnLoad(self);
-
     TalentLoadoutManagerDB = TalentLoadoutManagerDB or {};
     TalentLoadoutManagerCharDB = TalentLoadoutManagerCharDB or {};
     self.db = TalentLoadoutManagerDB;

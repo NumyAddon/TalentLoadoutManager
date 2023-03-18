@@ -209,7 +209,9 @@ function ImportExport:WriteLoadoutContent(exportStream, deserialized, treeID, cl
     local deserializedByNodeID = {};
     for _, info in pairs(deserialized) do
         local nodeID, _ = TLM:GetNodeAndEntryBySpellID(info.spellID, classID, specID);
-        deserializedByNodeID[nodeID] = info;
+        if nodeID then
+            deserializedByNodeID[nodeID] = info;
+        end
     end
 
     for _, nodeID in pairs(treeNodes) do
