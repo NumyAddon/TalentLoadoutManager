@@ -583,6 +583,9 @@ function SideBarMixin:CreateScrollBox(parentContainer)
         end
         frame.Text:SetText(elementData.text);
 
+        -- Allows other addons, like TalentTreeTweaks to safely hook into GameTooltip:Show
+        frame.TalentBuildExportString = GlobalAPI:GetExportString(elementData.data.id);
+
         frame:SetScript("OnClick", function(_, button)
             if button == "LeftButton" then
                 self:OnElementClick(frame, elementData.data);
