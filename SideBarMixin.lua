@@ -583,9 +583,6 @@ function SideBarMixin:CreateScrollBox(parentContainer)
         end
         frame.Text:SetText(elementData.text);
 
-        -- Allows other addons, like TalentTreeTweaks to safely hook into GameTooltip:Show
-        frame.TalentBuildExportString = GlobalAPI:GetExportString(elementData.data.id);
-
         frame:SetScript("OnClick", function(_, button)
             if button == "LeftButton" then
                 self:OnElementClick(frame, elementData.data);
@@ -594,17 +591,22 @@ function SideBarMixin:CreateScrollBox(parentContainer)
             end
         end);
         frame:SetScript("OnEnter", function()
+            frame.TalentBuildExportString = nil;
             GameTooltip:SetOwner(frame, "ANCHOR_RIGHT");
             GameTooltip:SetText(elementData.text);
             local defaultAction = self:GetDefaultActionText(elementData);
             GameTooltip:AddLine(string.format("Left-Click to %s this loadout", defaultAction), 1, 1, 1);
             GameTooltip:AddLine("Right-Click for options", 1, 1, 1);
+
+            -- Allows other addons, like TalentTreeTweaks to safely hook into GameTooltip:Show
+            frame.TalentBuildExportString = GlobalAPI:GetExportString(elementData.data.id);
+
             GameTooltip:Show();
 
             frame.HighlightBackground:Show();
         end);
         frame:SetScript("OnLeave", function()
-            GameTooltip:Hide();
+            --GameTooltip:Hide();
 
             frame.HighlightBackground:Hide();
         end);
