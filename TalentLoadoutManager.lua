@@ -280,10 +280,7 @@ function TLM:IsChoiceNode(nodeID)
     if configID == nil then return; end
 
     local nodeInfo = C_Traits.GetNodeInfo(configID, nodeID);
-    if nodeInfo and nodeInfo.entryIDs then
-        return #nodeInfo.entryIDs > 1;
-    end
-    return false;
+    return nodeInfo and Enum.TraitNodeType.Selection == nodeInfo.type;
 end
 
 --- @return number incremented unique ID
@@ -461,7 +458,7 @@ function TLM:LoadoutInfoToEntryInfo(loadoutInfo)
             for _, entryID in pairs(nodeInfo.entryIDs) do
                 if entryID == loadoutNodeInfo.entryID then
                     nodeInfoExists = true;
-                    isChoiceNode = #nodeInfo.entryIDs > 1;
+                    isChoiceNode = Enum.TraitNodeType.Selection == nodeInfo.type;
                 end
             end
         end
