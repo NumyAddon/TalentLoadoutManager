@@ -606,7 +606,7 @@ function SideBarMixin:CreateScrollBox(parentContainer)
             frame.HighlightBackground:Show();
         end);
         frame:SetScript("OnLeave", function()
-            --GameTooltip:Hide();
+            GameTooltip:Hide();
 
             frame.HighlightBackground:Hide();
         end);
