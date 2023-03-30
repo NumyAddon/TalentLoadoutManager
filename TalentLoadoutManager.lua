@@ -581,7 +581,9 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
     local specID = self.playerSpecID;
     local targetConfigID = self.charDb.customLoadoutConfigID[specID];
     local activeConfigID = C_ClassTalents.GetActiveConfigID();
-    if not C_Traits.GetConfigInfo(targetConfigID) then
+
+    local ok, configInfo = pcall(C_Traits.GetConfigInfo, targetConfigID);
+    if not ok or not configInfo then
         self.charDb.customLoadoutConfigID[specID] = nil;
         targetConfigID = nil;
     end
