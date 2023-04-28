@@ -19,6 +19,7 @@ SideBarMixin.ImplementTTTMissingWarning = false;
 SideBarMixin.ShowLoadAndApply = false;
 SideBarMixin.ShowShowInTTV = false;
 
+local LEVEL_CAP = 70;
 local SETTING_SUFFIX_COLLAPSED = "_Collapsed";
 local SETTING_SUFFIX_ANCHOR_LOCATION = "_AnchorLocation";
 local ANCHOR_LEFT = 0;
@@ -596,6 +597,7 @@ function SideBarMixin:CreateScrollBox(parentContainer)
             GameTooltip:SetText(elementData.text);
             local defaultAction = self:GetDefaultActionText(elementData);
             GameTooltip:AddLine(string.format("Left-Click to %s this loadout", defaultAction), 1, 1, 1);
+            GameTooltip:AddLine("Shift-Click to link to chat", 1, 1, 1);
             GameTooltip:AddLine("Right-Click for options", 1, 1, 1);
 
             -- Allows other addons, like TalentTreeTweaks to safely hook into GameTooltip:Show
@@ -678,6 +680,13 @@ function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
                 self:ExportLoadout(elementData);
             end,
         },
+        linkToChat = {
+            text = "Link to chat",
+            notCheckable = true,
+            func = function()
+                self:LinkToChat(elementData.id);
+            end,
+        },
         openInTTV = {
             text = "Open in TalentTreeViewer",
             notCheckable = true,
@@ -712,6 +721,7 @@ function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
         items.saveCurrentIntoLoadout,
         items.rename,
         items.export,
+        items.linkToChat,
         items.openInTTV,
         items.delete,
         items.removeFromList,
@@ -739,6 +749,10 @@ function SideBarMixin:SetElementAsActive(frame, elementData)
 end
 
 function SideBarMixin:OnElementClick(frame, elementData, forceApply)
+    if IsShiftKeyDown() then
+        self:LinkToChat(elementData.id);
+        return;
+    end
     self:SetElementAsActive(frame, elementData);
     if forceApply == nil then forceApply = Config:GetConfig('autoApply') end
     local autoApply = forceApply;
@@ -753,6 +767,35 @@ function SideBarMixin:OnElementRightClick(frame, elementData)
     end
     dropDown.currentElement = elementData.id;
     self:OpenDropDownMenu(dropDown, frame, elementData);
+end
+
+function SideBarMixin:LinkToChat(loadoutId)
+    local exportString = GlobalAPI:GetExportString(loadoutId);
+    if not exportString then
+        return;
+    end
+
+    if not TALENT_BUILD_CHAT_LINK_TEXT then
+        if not ChatEdit_InsertLink(exportString) then
+            ChatFrame_OpenChat(exportString);
+        end
+        return;
+    end
+
+    local talentsTab = self:GetTalentsTab();
+
+    local specName = talentsTab:GetSpecName();
+    local className = talentsTab:GetClassName();
+    local specID = talentsTab:GetSpecID();
+    local classColor = RAID_CLASS_COLORS[select(2, GetClassInfo(talentsTab:GetClassID()))];
+    local level = LEVEL_CAP;
+
+    local linkDisplayText = ("[%s]"):format(TALENT_BUILD_CHAT_LINK_TEXT:format(specName, className));
+    local linkText = LinkUtil.FormatLink("talentbuild", linkDisplayText, specID, level, exportString);
+    local chatLink = classColor:WrapTextInColorCode(linkText);
+    if not ChatEdit_InsertLink(chatLink) then
+        ChatFrame_OpenChat(chatLink);
+    end
 end
 
 function SideBarMixin:ExportLoadout(elementData)
