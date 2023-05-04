@@ -277,7 +277,7 @@ end
 --- @return boolean
 function TLM:IsChoiceNode(nodeID)
     local configID = C_ClassTalents.GetActiveConfigID();
-    if configID == nil then return; end
+    if configID == nil or nodeID == nil then return; end
 
     local nodeInfo = C_Traits.GetNodeInfo(configID, nodeID);
     return nodeInfo and Enum.TraitNodeType.Selection == nodeInfo.type;
