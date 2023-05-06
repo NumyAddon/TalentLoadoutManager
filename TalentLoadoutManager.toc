@@ -1,7 +1,7 @@
 ## Interface: @toc-version-retail@
 ## Title: Talent Loadout Manager
 ## Author: Numy
-## IconTexture: 982414
+## IconTexture: Interface\Addons\TalentLoadoutManager\media\icon
 ## Notes: Talent Loadout Manager
 ## Version: @project-version@
 ## X-Curse-Project-ID: 821821
