@@ -8,7 +8,7 @@ local Config = {};
 ns.Config = Config;
 
 
-Config.version = GetAddOnMetadata(addonName, "Version") or ""
+Config.version = C_AddOns.GetAddOnMetadata(addonName, "Version") or ""
 
 function Config:GetOptions()
     local orderCount = CreateCounter(1);
