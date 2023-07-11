@@ -11,14 +11,14 @@
 
 libs\embeds.xml
 
-ImportExport.lua
-TalentLoadoutManager.lua
-ManagerApi.lua
-BlizzardLoadoutChanger.lua
-config.lua
+core\ImportExport.lua
+core\TalentLoadoutManager.lua
+core\ManagerApi.lua
+core\BlizzardLoadoutChanger.lua
+core\Config.lua
 
-SideBarMixin.lua
-DefaultUISidebar.lua
-TalentTreeViewerSidebar.lua
+modules\SideBarMixin.lua
+modules\DefaultUISidebar.lua
+modules\TalentTreeViewerSidebar.lua
 
-SimulationCraft.lua
+modules\SimulationCraft.lua
