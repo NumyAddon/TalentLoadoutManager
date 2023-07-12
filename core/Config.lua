@@ -8,7 +8,28 @@ local Config = {};
 ns.Config = Config;
 
 
-Config.version = C_AddOns.GetAddOnMetadata(addonName, "Version") or ""
+Config.version = C_AddOns.GetAddOnMetadata(addonName, "Version") or "";
+
+function Config:Initialize()
+    local defaultConfig = {
+        autoApplyOnLevelUp = true,
+        autoScale = true,
+        autoPosition = true,
+        autoApply = true,
+        integrateWithSimc = true,
+    };
+    for key, value in pairs(defaultConfig) do
+        if TLM.db.config[key] == nil then
+            TLM.db.config[key] = value;
+        end
+    end
+
+    Mixin(self, CallbackRegistryMixin);
+    CallbackRegistryMixin.OnLoad(self);
+
+    self:RegisterOptions();
+    LibStub("AceConfigDialog-3.0"):AddToBlizOptions(addonName, addonName);
+end
 
 function Config:GetOptions()
     local orderCount = CreateCounter(1);
@@ -22,6 +43,14 @@ function Config:GetOptions()
                 order = orderCount(),
                 type = "description",
                 name = "Version: " .. self.version,
+            },
+            autoApplyOnLevelUp = {
+                order = orderCount(),
+                type = "toggle",
+                name = "Auto Re-Apply Loadout on Level Up",
+                desc = "Automatically re-apply your current talent loadout when you level up.",
+                descStyle = "inline",
+                width = "full",
             },
             autoScale = {
                 order = orderCount(),
@@ -71,14 +100,6 @@ function Config:GetOptions()
 end
 
 Config.Event = { OptionValueChanged = 'OptionValueChanged' };
-
-function Config:Initialize()
-    Mixin(self, CallbackRegistryMixin);
-    CallbackRegistryMixin.OnLoad(self);
-
-    self:RegisterOptions();
-    LibStub("AceConfigDialog-3.0"):AddToBlizOptions(addonName, addonName);
-end
 
 function Config:RegisterOptions()
     LibStub("AceConfig-3.0"):RegisterOptionsTable(addonName, self:GetOptions());

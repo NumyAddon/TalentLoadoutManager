@@ -74,21 +74,10 @@ function TLM:OnInitialize()
         customLoadoutAutoIncrement = 1,
         config = {},
     };
-    local defaultConfig = {
-        autoScale = true,
-        autoPosition = true,
-        autoApply = true,
-        integrateWithSimc = true,
-    };
 
     for key, value in pairs(defaults) do
         if self.db[key] == nil then
             self.db[key] = value;
-        end
-    end
-    for key, value in pairs(defaultConfig) do
-        if self.db.config[key] == nil then
-            self.db.config[key] = value;
         end
     end
 
