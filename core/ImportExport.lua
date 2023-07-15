@@ -201,7 +201,20 @@ function ImportExport:WriteLoadoutContent(exportStream, deserialized, treeID, cl
 
     local deserializedByNodeID = {};
     for _, info in pairs(deserialized) do
-        local nodeID, _ = TLM:GetNodeAndEntryBySpellID(info.spellID, classID, specID);
+        local nodeInfoExists = false;
+        local nodeInfo = LibTT:GetNodeInfo(info.nodeID)
+        if nodeInfo then
+            for _, entryID in pairs(nodeInfo.entryIDs) do
+                if entryID == info.entryID then
+                    nodeInfoExists = true;
+                end
+            end
+        end
+
+        local nodeID, entryID = info.nodeID, info.entryID;
+        if not nodeInfoExists then
+            nodeID, entryID = TLM:GetNodeAndEntryBySpellID(info.spellID, classID, specID);
+        end
         if nodeID then
             deserializedByNodeID[nodeID] = info;
         end
