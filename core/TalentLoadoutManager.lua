@@ -89,11 +89,11 @@ function TLM:OnInitialize()
     self.charDb.selectedCustomLoadoutID = self.charDb.selectedCustomLoadoutID or {};
     self.loadoutByIDCache = {};
 
-    self:RegisterEvent("SPELLS_CHANGED");
+    self:RegisterEvent("TRAIT_CONFIG_LIST_UPDATED");
 end
 
-function TLM:SPELLS_CHANGED()
-    self:UnregisterEvent("SPELLS_CHANGED");
+function TLM:TRAIT_CONFIG_LIST_UPDATED()
+    self:UnregisterEvent("TRAIT_CONFIG_LIST_UPDATED");
     local playerName, playerRealm = UnitFullName("player")
     self.playerName = playerName .. "-" .. playerRealm;
     self.playerClassID = PlayerUtil.GetClassID();
@@ -279,30 +279,45 @@ function TLM:IncrementCustomLoadoutAutoIncrement()
     return self.db.customLoadoutAutoIncrement;
 end
 
-function TLM:UpdateBlizzardLoadouts()
-    local classID = self.playerClassID;
-    local specID = self.playerSpecID;
-    self.db.blizzardLoadouts[classID] = self.db.blizzardLoadouts[classID] or {};
-    self.db.blizzardLoadouts[classID][specID] = self.db.blizzardLoadouts[classID][specID] or {};
-    if self.db.blizzardLoadouts[classID][specID][self.playerName] then
-        for configID, _ in pairs(self.db.blizzardLoadouts[classID][specID][self.playerName]) do
-            self.loadoutByIDCache[configID] = nil;
+function TLM:GetBlizzardLoadoutSpec(configID)
+    for index = 1, GetNumSpecializations() do
+        local specID = GetSpecializationInfo(index);
+        for _, specConfigID in pairs(C_ClassTalents.GetConfigIDsBySpecID(specID)) do
+            if specConfigID == configID then
+                return specID;
+            end
         end
     end
-    self.db.blizzardLoadouts[classID][specID][self.playerName] = {};
+end
 
-    local activeConfigID = C_ClassTalents.GetActiveConfigID();
-    for _, configID in pairs(C_ClassTalents.GetConfigIDsBySpecID()) do
-        if configID ~= activeConfigID and configID ~= self.charDb.customLoadoutConfigID then
-            self:UpdateBlizzardLoadout(configID);
+function TLM:UpdateBlizzardLoadouts()
+    local classID = self.playerClassID;
+    self.db.blizzardLoadouts[classID] = self.db.blizzardLoadouts[classID] or {};
+    for index = 1, GetNumSpecializations() do
+        local specID = GetSpecializationInfo(index);
+        self.db.blizzardLoadouts[classID][specID] = self.db.blizzardLoadouts[classID][specID] or {};
+        if self.db.blizzardLoadouts[classID][specID][self.playerName] then
+            for configID, _ in pairs(self.db.blizzardLoadouts[classID][specID][self.playerName]) do
+                self.loadoutByIDCache[configID] = nil;
+            end
+        end
+        self.db.blizzardLoadouts[classID][specID][self.playerName] = {};
+
+        local activeConfigID = C_ClassTalents.GetActiveConfigID();
+        for _, configID in pairs(C_ClassTalents.GetConfigIDsBySpecID(specID)) do
+            if configID ~= activeConfigID and configID ~= self.charDb.customLoadoutConfigID then
+                self:UpdateBlizzardLoadout(configID, specID);
+            end
         end
     end
     self:TriggerEvent(self.Event.LoadoutListUpdated);
 end
 
-function TLM:UpdateBlizzardLoadout(configID)
+function TLM:UpdateBlizzardLoadout(configID, specID)
     local classID = self.playerClassID;
-    local specID = self.playerSpecID;
+    specID = specID or self:GetBlizzardLoadoutSpec(configID);
+    if not specID then return; end
+
     self.db.blizzardLoadouts[classID] = self.db.blizzardLoadouts[classID] or {};
     self.db.blizzardLoadouts[classID][specID] = self.db.blizzardLoadouts[classID][specID] or {};
     self.db.blizzardLoadouts[classID][specID][self.playerName] = self.db.blizzardLoadouts[classID][specID][self.playerName] or {};
