@@ -12,6 +12,7 @@ local Config = ns.Config;
 --- @type TalentLoadoutManagerAPI
 local API = TalentLoadoutManagerAPI;
 local GlobalAPI = TalentLoadoutManagerAPI.GlobalAPI;
+local CharacterAPI = TalentLoadoutManagerAPI.CharacterAPI;
 
 SideBarMixin.ImplementAutoApply = false;
 SideBarMixin.ShowAnimationOnImport = false;
@@ -582,7 +583,11 @@ function SideBarMixin:CreateScrollBox(parentContainer)
             self.activeLoadoutFrame = frame;
             frame.Background:SetColorTexture(0.2, 0.2, 0.2, 0.5);
         end
-        frame.Text:SetText(elementData.text);
+        local text = elementData.text;
+        if elementData.parentID then
+            text = "  ||  " .. text;
+        end
+        frame.Text:SetText(text);
 
         frame:SetScript("OnClick", function(_, button)
             if button == "LeftButton" then
@@ -621,9 +626,8 @@ function SideBarMixin:CreateScrollBox(parentContainer)
 
     ScrollUtil.InitScrollBoxWithScrollBar(ContainerFrame.ScrollBox, ContainerFrame.ScrollBar, ContainerFrame.ScrollView)
 
-    local dataProvider = CreateDataProvider()
-    dataProvider:SetSortComparator(function(a, b) return self:SortElements(a, b) end, true);
-    ContainerFrame.ScrollBox:SetDataProvider(dataProvider)
+    local dataProvider = CreateDataProvider();
+    ContainerFrame.ScrollBox:SetDataProvider(dataProvider);
 
     return ContainerFrame, dataProvider;
 end
@@ -634,6 +638,10 @@ function SideBarMixin:InitDropDown(parentFrame)
 end
 
 function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
+    local talentsTab = self:GetTalentsTab();
+    local classID = talentsTab:GetClassID();
+    local playerClassID = select(3, UnitClass("player"));
+
     local items = {
         title = {
             text = elementData.displayName,
@@ -671,6 +679,15 @@ function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
             disabled = not elementData.playerIsOwner,
             func = function()
                 StaticPopup_Show(self.renameDialogName, elementData.displayName, nil, elementData);
+            end,
+        },
+        setParentLoadout = {
+            text = "Set Blizzard base loadout",
+            notCheckable = true,
+            hidden = classID ~= playerClassID or elementData.isBlizzardLoadout,
+            hasArrow = true,
+            menuList = function()
+                return self:MakeBlizzardLoadoutsMenuList(elementData);
             end,
         },
         export = {
@@ -716,6 +733,7 @@ function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
 
     local order = {
         items.title,
+        items.setParentLoadout,
         items.load,
         items.loadAndApply,
         items.saveCurrentIntoLoadout,
@@ -731,11 +749,33 @@ function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
     for _, v in ipairs(order) do
         if not v.hidden then
             v.hidden = nil;
+            if v.menuList and type(v.menuList) == "function" then
+                v.menuList = v.menuList();
+            end
             table.insert(self.menuList, v);
         end
     end
 
     LibDD:EasyMenu(self.menuList, dropDown, frame, 80, 0);
+end
+
+function SideBarMixin:MakeBlizzardLoadoutsMenuList(elementData)
+    local dataProvider = self.DataProvider;
+    local elements = dataProvider:GetCollection();
+    local menuList = {};
+    for _, v in ipairs(elements) do
+        if v.data.isBlizzardLoadout and v.data.playerIsOwner then
+            table.insert(menuList, {
+                text = v.data.displayName,
+                func = function()
+                    CharacterAPI:SetParentLoadout(elementData.id, v.data.id);
+                end,
+                checked = v.data.id == elementData.parentID,
+            });
+        end
+    end
+
+    return menuList;
 end
 
 function SideBarMixin:SetElementAsActive(frame, elementData)
@@ -819,42 +859,79 @@ function SideBarMixin:OpenInTalentTreeViewer(elementData)
     TalentViewer:ImportLoadout(exportString);
 end
 
-function SideBarMixin:SortElements(a, b)
+function SideBarMixin:SortElements()
+    local dataProvider = self.DataProvider;
     --- order by:
     --- 1. playerIsOwner
     --- 2. isBlizzardLoadout
     --- 3. name (todo: make this optional?)
     --- 4. id (basically, the order they were created?)
+    ---
+    --- custom loadouts are listed underneath their parent, if any
 
-    if not b then
+    local function compare(a, b)
+        if not b then
+            return false;
+        end
+
+        if a.data.playerIsOwner and not b.data.playerIsOwner then
+            return true;
+        elseif not a.data.playerIsOwner and b.data.playerIsOwner then
+            return false;
+        end
+
+        if a.data.isBlizzardLoadout and not b.data.isBlizzardLoadout then
+            return true;
+        elseif not a.data.isBlizzardLoadout and b.data.isBlizzardLoadout then
+            return false;
+        end
+
+        if a.data.displayName < b.data.displayName then
+            return true;
+        elseif a.data.displayName > b.data.displayName then
+            return false;
+        end
+
+        if a.data.id < b.data.id then
+            return true;
+        elseif a.data.id > b.data.id then
+            return false;
+        end
+
         return false;
     end
 
-    if a.data.playerIsOwner and not b.data.playerIsOwner then
-        return true;
-    elseif not a.data.playerIsOwner and b.data.playerIsOwner then
-        return false;
+    local elements = CopyTable(dataProvider:GetCollection());
+
+    table.sort(elements, compare);
+    local lookup = {};
+    for index, element in ipairs(elements) do
+        element.order = index;
+        element.subOrder = 0;
+        lookup[element.data.id] = element;
     end
 
-    if a.data.isBlizzardLoadout and not b.data.isBlizzardLoadout then
-        return true;
-    elseif not a.data.isBlizzardLoadout and b.data.isBlizzardLoadout then
-        return false;
+    for index, element in ipairs(elements) do
+        local parentIndex = element.parentID and lookup[element.parentID] and lookup[element.parentID].order;
+        if parentIndex then
+            element.order = parentIndex;
+            element.subOrder = index;
+        end
     end
 
-    if a.data.displayName < b.data.displayName then
-        return true;
-    elseif a.data.displayName > b.data.displayName then
-        return false;
-    end
+    dataProvider:SetSortComparator(function(a, b)
+        if not b then
+            return false;
+        end
+        a = lookup[a.data.id];
+        b = lookup[b.data.id];
 
-    if a.data.id < b.data.id then
-        return true;
-    elseif a.data.id > b.data.id then
-        return false;
-    end
-
-    return false;
+        if a.order == b.order then
+            return a.subOrder < b.subOrder;
+        end
+        return a.order < b.order;
+    end);
+    dataProvider:ClearSortComparator();
 end
 
 function SideBarMixin:GetLoadouts()
@@ -875,10 +952,12 @@ function SideBarMixin:RefreshSideBarData()
     local foundActiveLoadout = false;
     local activeLoadoutID = self.activeLoadout and self.activeLoadout.id or nil;
     for _, loadout in pairs(loadouts) do
+        loadout.parentID = loadout.parentMapping and loadout.parentMapping[0];
         dataProvider:Insert({
             text = loadout.displayName,
             data = loadout,
             isActive = loadout.id == activeLoadoutID,
+            parentID = loadout.parentID,
         });
         if loadout.id == activeLoadoutID then
             foundActiveLoadout = true;
@@ -888,6 +967,7 @@ function SideBarMixin:RefreshSideBarData()
         self.activeLoadoutFrame = nil;
         self.activeLoadout = nil;
     end
+    self:SortElements();
 
     self.SideBar.SaveButton:SetEnabled(self.activeLoadout and not self.activeLoadout.isBlizzardLoadout);
 end

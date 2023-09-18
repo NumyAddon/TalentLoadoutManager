@@ -43,6 +43,7 @@ API.Event = {
 --- @field owner string|nil - player-realm, only applies to Blizzard loadouts
 --- @field playerIsOwner boolean - false for Blizzard loadouts owned by alts
 --- @field isBlizzardLoadout boolean
+--- @field parentMapping number[]|nil - only set if this is a custom loadout, [playerName-realmName] = parentLoadoutID, position [0] contains the current player's parentLoadoutID if any
 --- @field classID number
 --- @field specID number
 
@@ -57,6 +58,7 @@ local function CreateLoadoutInfoFromDisplayInfo(displayInfo)
         owner = displayInfo.owner,
         playerIsOwner = displayInfo.playerIsOwner,
         isBlizzardLoadout = displayInfo.isBlizzardLoadout,
+        parentMapping = displayInfo.parentMapping,
         classID = displayInfo.classID,
         specID = displayInfo.specID,
     };
@@ -248,6 +250,13 @@ end
 --- @return number|nil
 function CharacterAPI:GetActiveBlizzardLoadoutConfigID()
     return TLM:GetActiveBlizzardLoadoutConfigID();
+end
+
+--- Set a custom loadout to use a specific blizzard loadout as parent
+--- @param childLoadoutID number|string - the loadout ID, this should be a custom TLM loadout ID
+--- @param parentLoadoutID number - the loadout ID, this should be a blizzard loadout ConfigID
+function CharacterAPI:SetParentLoadout(childLoadoutID, parentLoadoutID)
+    return TLM:SetParentLoadout(childLoadoutID, parentLoadoutID);
 end
 
 --- Load a loadout, this will apply the loadout to the current character

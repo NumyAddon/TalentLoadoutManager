@@ -47,6 +47,7 @@ end
 --- @field owner string|nil
 --- @field playerIsOwner boolean
 --- @field isBlizzardLoadout boolean
+--- @field parentMapping number[]|nil - only set if this is a custom loadout, [playerName-realmName] = parentLoadoutID, position [0] contains the current player's parentLoadoutID if any
 --- @field classID number
 --- @field specID number
 
@@ -150,6 +151,33 @@ function TLM:ACTIVE_PLAYER_SPECIALIZATION_CHANGED()
     self:TriggerEvent(self.Event.LoadoutListUpdated);
 end
 
+function TLM:GetParentMappingForLoadout(loadout, specID)
+    if not loadout then return {}; end
+    local mapping = Mixin({}, loadout.parentMapping or {});
+    mapping[0] = mapping[self.playerName] or nil;
+    if not mapping[0] and specID then
+        mapping[0] = self.charDb.customLoadoutConfigID[specID] or nil;
+    end
+
+    return mapping;
+end
+
+function TLM:SetParentLoadout(childLoadoutID, parentLoadoutID)
+    local displayInfo = self:GetLoadoutByID(childLoadoutID, true);
+    if not displayInfo or not displayInfo.loadoutInfo then return; end
+
+    local loadoutInfo = displayInfo.loadoutInfo;
+    if not loadoutInfo then return end
+
+    loadoutInfo.parentMapping = loadoutInfo.parentMapping or {};
+    loadoutInfo.parentMapping[self.playerName] = parentLoadoutID;
+
+    displayInfo.parentMapping = self:GetParentMappingForLoadout(loadoutInfo, displayInfo.specID);
+
+    self:TriggerEvent(self.Event.LoadoutUpdated, displayInfo.classID, displayInfo.specID, displayInfo.id, displayInfo);
+    self:TriggerEvent(self.Event.LoadoutListUpdated);
+end
+
 function TLM:RebuildLoadoutByIDCache()
     self.loadoutByIDCache = {};
     for classID, specList in pairs(self.db.blizzardLoadouts) do
@@ -167,6 +195,7 @@ function TLM:RebuildLoadoutByIDCache()
                         owner = playerName,
                         playerIsOwner = playerName == self.playerName,
                         isBlizzardLoadout = true,
+                        parentMapping = nil,
                         classID = classID,
                         specID = specID,
                     };
@@ -186,6 +215,7 @@ function TLM:RebuildLoadoutByIDCache()
                     owner = nil,
                     playerIsOwner = true,
                     isBlizzardLoadout = false,
+                    parentMapping = self:GetParentMappingForLoadout(loadoutInfo, specID),
                     classID = classID,
                     specID = specID,
                 };
@@ -367,6 +397,7 @@ function TLM:UpdateCustomLoadout(customLoadoutID, selectedNodes, classIDOrNil, s
             owner = nil,
             playerIsOwner = true,
             isBlizzardLoadout = false,
+            parentMapping = self:GetParentMappingForLoadout(loadoutInfo, specID),
             classID = classID,
             specID = specID,
         }
@@ -378,6 +409,10 @@ end
 --- @param configID number
 --- @return string serialized loadout
 function TLM:SerializeLoadout(configID)
+    local importString = C_Traits.GenerateImportString(configID);
+    if importString and importString ~= "" then
+        return (ImportExport:BuildSerializedSelectedNodesFromImportString(importString));
+    end
     local serialized = "";
     --- format: nodeID_entryID_spellID_rank
     local vSep = SERIALIZATION_VALUE_SEPARATOR;
@@ -436,11 +471,14 @@ end
 --- @return string|number|nil currently active (possibly custom) loadout ID, custom loadouts are prefixed with "C_"
 function TLM:GetActiveLoadoutID()
     local activeLoadoutConfigID = self:GetActiveBlizzardLoadoutConfigID();
-    local customLoadoutConfigID = self.charDb.customLoadoutConfigID[self.playerSpecID];
     local customLoadoutID = self.charDb.selectedCustomLoadoutID[self.playerSpecID];
+    if customLoadoutID then
+        local customLoadout = self:GetLoadoutByID(customLoadoutID, true);
+        local parentConfigID = self:GetParentMappingForLoadout(customLoadout, self.playerSpecID)[0];
 
-    if activeLoadoutConfigID == customLoadoutConfigID and customLoadoutID then
-        return customLoadoutID;
+        if activeLoadoutConfigID == parentConfigID then
+            return customLoadoutID;
+        end
     end
 
     return activeLoadoutConfigID;
@@ -510,9 +548,12 @@ function TLM:PurchaseLoadoutEntryInfo(configID, loadoutEntryInfo)
 end
 
 --- @param loadoutID string|number
+--- @param rawData boolean|nil - if true, the raw saved variable information is returned
 --- @return TalentLoadoutManager_LoadoutDisplayInfo|nil
-function TLM:GetLoadoutByID(loadoutID)
+function TLM:GetLoadoutByID(loadoutID, rawData)
     local displayInfo = self.loadoutByIDCache[loadoutID];
+    if rawData then return displayInfo; end
+
     if displayInfo then
         displayInfo = Mixin({}, displayInfo);
         displayInfo.isActive = self:GetActiveLoadoutID() == loadoutID;
@@ -560,39 +601,40 @@ end
 --- @param loadoutInfo TalentLoadoutManager_LoadoutInfo
 function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
     --------------------------------------------------------------------------------------------
+    --- If autoApply is false, simply reset and load the custom loadout.
     ---
     --- plan A:
     --- note: this plan failed :( the game doesn't really support making changes to a loadout in the background, and then loading that
-    --- 1. Reset tree of the targetConfigID
+    --- 1. Reset tree of the parentConfigId
     --- 2.
-    ---    if a configID other than targetConfigID is active:
-    ---      - LoadConfigByPredicate to targetConfigID
+    ---    if a configID other than parentConfigId is active:
+    ---      - LoadConfigByPredicate to parentConfigId
     ---    else:
-    ---      - C_ClassTalents.LoadConfig(targetConfigID, true)
+    ---      - C_ClassTalents.LoadConfig(parentConfigId, true)
     --- 3. Apply the custom loadout to activeConfigID (but don't commit)
     --- 4. Commit activeConfigID
-    --- 5. After cast is done, C_ClassTalents.SaveConfig(targetConfigID)
+    --- 5. After cast is done, C_ClassTalents.SaveConfig(parentConfigId)
     ---
     ---
     --- plan B:
     --- note: this plan is a bit shitty, but it seems to work.. for now..
-    --- 1. switch to targetConfigID first
+    --- 1. switch to parentConfigId first
     --- 2. after switching, reset tree and apply custom loadout to activeConfigID
     --- 3. commit activeConfigID, but only if there are staging changes
     ---
     --------------------------------------------------------------------------------------------
 
     local specID = self.playerSpecID;
-    local targetConfigID = self.charDb.customLoadoutConfigID[specID];
+    local parentConfigId = self:GetParentMappingForLoadout(loadoutInfo, specID)[0];
     local activeConfigID = C_ClassTalents.GetActiveConfigID();
 
-    local ok, configInfo = pcall(C_Traits.GetConfigInfo, targetConfigID);
+    local ok, configInfo = pcall(C_Traits.GetConfigInfo, parentConfigId);
     if not ok or not configInfo then
         self.charDb.customLoadoutConfigID[specID] = nil;
-        targetConfigID = nil;
+        parentConfigId = nil;
     end
 
-    if targetConfigID == nil then
+    if autoApply and parentConfigId == nil then
         if not C_ClassTalents.CanCreateNewConfig() then
             self:Print("You have too many blizzard loadouts. Please delete one in order to switch to a custom loadout.");
             return false;
@@ -611,8 +653,8 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
     local loadoutEntryInfo, foundIssues = self:LoadoutInfoToEntryInfo(loadoutInfo);
     local entriesCount = #loadoutEntryInfo + foundIssues;
 
-    if self:GetActiveBlizzardLoadoutConfigID() ~= targetConfigID then
-        self:ApplyBlizzardLoadout(targetConfigID, true, function()
+    if autoApply and self:GetActiveBlizzardLoadoutConfigID() ~= parentConfigId then
+        self:ApplyBlizzardLoadout(parentConfigId, true, function()
             RunNextFrame(function() self:ApplyCustomLoadout(loadoutInfo, autoApply); end);
         end);
 
@@ -632,7 +674,7 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
         self:Print("Failed to fully apply loadout. " .. entriesCount .. " entries could not be purchased.");
     end
 
-    if autoApply and C_Traits.ConfigHasStagedChanges(activeConfigID) and not C_ClassTalents.CommitConfig(targetConfigID) then
+    if autoApply and C_Traits.ConfigHasStagedChanges(activeConfigID) and not C_ClassTalents.CommitConfig(parentConfigId) then
         self:Print("Failed to commit loadout.");
         return false;
     end
@@ -645,6 +687,7 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
         owner = nil,
         playerIsOwner = true,
         isBlizzardLoadout = false,
+        parentMapping = self:GetParentMappingForLoadout(loadoutInfo, self.playerSpecID),
         classID = self.playerClassID,
         specID = self.playerSpecID,
     }
@@ -685,7 +728,11 @@ function TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specI
         id = id,
         name = name,
         selectedNodes = loadoutInfo.selectedNodes,
+        parentMapping = {},
     }
+    if classID == self.playerClassID and specID == self.playerSpecID then
+        newLoadoutInfo.parentMapping[self.playerName] = self:GetActiveBlizzardLoadoutConfigID();
+    end
     self.db.customLoadouts[classID][specID][id] = newLoadoutInfo;
     local displayInfo = {
         id = id,
@@ -694,6 +741,7 @@ function TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specI
         owner = nil,
         playerIsOwner = true,
         isBlizzardLoadout = false,
+        parentMapping = self:GetParentMappingForLoadout(newLoadoutInfo, specID),
         classID = classID,
         specID = specID,
     }
@@ -753,6 +801,7 @@ function TLM:RenameCustomLoadout(classIDOrNil, specIDOrNil, loadoutID, newName)
             owner = nil,
             playerIsOwner = true,
             isBlizzardLoadout = false,
+            parentMapping = self:GetParentMappingForLoadout(loadoutInfo, specID),
             classID = classID,
             specID = specID,
         }
