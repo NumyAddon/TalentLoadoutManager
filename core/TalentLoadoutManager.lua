@@ -104,6 +104,7 @@ function TLM:TRAIT_CONFIG_LIST_UPDATED()
 
     self:RegisterEvent("TRAIT_CONFIG_UPDATED");
     self:RegisterEvent("TRAIT_CONFIG_DELETED");
+    self:RegisterEvent("CONFIG_COMMIT_FAILED");
     self:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED");
 end
 
@@ -144,6 +145,13 @@ function TLM:TRAIT_CONFIG_DELETED(_, configID)
     end
 
     self.loadoutByIDCache[configID] = nil;
+end
+
+function TLM:CONFIG_COMMIT_FAILED(_, configID)
+    if configID ~= C_ClassTalents.GetActiveConfigID() then return; end
+    RunNextFrame(function()
+        self:TriggerEvent(self.Event.LoadoutListUpdated);
+    end)
 end
 
 function TLM:ACTIVE_PLAYER_SPECIALIZATION_CHANGED()
@@ -605,36 +613,45 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
     ---
     --- plan A:
     --- note: this plan failed :( the game doesn't really support making changes to a loadout in the background, and then loading that
-    --- 1. Reset tree of the parentConfigId
+    --- 1. Reset tree of the parentConfigID
     --- 2.
-    ---    if a configID other than parentConfigId is active:
-    ---      - LoadConfigByPredicate to parentConfigId
+    ---    if a configID other than parentConfigID is active:
+    ---      - LoadConfigByPredicate to parentConfigID
     ---    else:
-    ---      - C_ClassTalents.LoadConfig(parentConfigId, true)
+    ---      - C_ClassTalents.LoadConfig(parentConfigID, autoApply: true)
     --- 3. Apply the custom loadout to activeConfigID (but don't commit)
     --- 4. Commit activeConfigID
-    --- 5. After cast is done, C_ClassTalents.SaveConfig(parentConfigId)
+    --- 5. After cast is done, C_ClassTalents.SaveConfig(parentConfigID)
     ---
     ---
     --- plan B:
     --- note: this plan is a bit shitty, but it seems to work.. for now..
-    --- 1. switch to parentConfigId first
+    --- 1. switch to parentConfigID first
     --- 2. after switching, reset tree and apply custom loadout to activeConfigID
     --- 3. commit activeConfigID, but only if there are staging changes
+    ---
+    --- plan C:
+    --- note: this ?might? work? it's hard to tell, there's some issues, but it's hard to reproduce and pin down
+    --- 1. if currentBlizzConfig ~= parentConfigID -> C_ClassTalents.LoadConfig(parentConfigID, autoApply: false)
+    --- 2. Reset parentConfigID tree
+    --- 3. Apply custom loadout to activeConfigID
+    --- 4. Commit activeConfigID
+    --- 5. After cast is done, C_ClassTalents.SaveConfig(parentConfigID)
     ---
     --------------------------------------------------------------------------------------------
 
     local specID = self.playerSpecID;
-    local parentConfigId = self:GetParentMappingForLoadout(loadoutInfo, specID)[0];
+    local parentConfigID = self:GetParentMappingForLoadout(loadoutInfo, specID)[0];
     local activeConfigID = C_ClassTalents.GetActiveConfigID();
 
-    local ok, configInfo = pcall(C_Traits.GetConfigInfo, parentConfigId);
+    local ok, configInfo = pcall(C_Traits.GetConfigInfo, parentConfigID);
     if not ok or not configInfo then
         self.charDb.customLoadoutConfigID[specID] = nil;
-        parentConfigId = nil;
+        self:SetParentLoadout(loadoutInfo.id, nil);
+        parentConfigID = nil;
     end
 
-    if autoApply and parentConfigId == nil then
+    if autoApply and parentConfigID == nil then
         if not C_ClassTalents.CanCreateNewConfig() then
             self:Print("You have too many blizzard loadouts. Please delete one in order to switch to a custom loadout.");
             return false;
@@ -653,12 +670,10 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
     local loadoutEntryInfo, foundIssues = self:LoadoutInfoToEntryInfo(loadoutInfo);
     local entriesCount = #loadoutEntryInfo + foundIssues;
 
-    if autoApply and self:GetActiveBlizzardLoadoutConfigID() ~= parentConfigId then
-        self:ApplyBlizzardLoadout(parentConfigId, true, function()
-            RunNextFrame(function() self:ApplyCustomLoadout(loadoutInfo, autoApply); end);
-        end);
-
-        return true;
+    local loadedParentConfig = false;
+    if autoApply and self:GetActiveBlizzardLoadoutConfigID() ~= parentConfigID then
+        loadedParentConfig = true;
+        C_ClassTalents.LoadConfig(parentConfigID, false);
     end
     C_Traits.ResetTree(activeConfigID, self:GetTreeID());
 
@@ -674,9 +689,27 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
         self:Print("Failed to fully apply loadout. " .. entriesCount .. " entries could not be purchased.");
     end
 
-    if autoApply and C_Traits.ConfigHasStagedChanges(activeConfigID) and not C_ClassTalents.CommitConfig(parentConfigId) then
-        self:Print("Failed to commit loadout.");
-        return false;
+    if autoApply then
+        if C_Traits.ConfigHasStagedChanges(activeConfigID) then
+            if not C_ClassTalents.CommitConfig(parentConfigID) then
+                self:Print("Failed to commit loadout.");
+                return false;
+            end
+
+            if loadedParentConfig then
+                self.BlizzardLoadoutChanger:UpdateLastSelectedSavedConfigID(parentConfigID);
+            end
+        elseif loadedParentConfig then
+            C_ClassTalents.SaveConfig(parentConfigID);
+            RunNextFrame(function()
+                C_ClassTalents.LoadConfig(parentConfigID, true);
+                RunNextFrame(function()
+                    self.BlizzardLoadoutChanger:SelectLoadout(parentConfigID, true, nop)
+
+                    --self.BlizzardLoadoutChanger:UpdateLastSelectedSavedConfigID(parentConfigID);
+                end)
+            end)
+        end
     end
 
     self.charDb.selectedCustomLoadoutID[self.playerSpecID] = loadoutInfo.id;
@@ -712,6 +745,7 @@ end
 
 function TLM:ApplyBlizzardLoadout(configID, autoApply, onAfterChangeCallback)
     self.BlizzardLoadoutChanger:SelectLoadout(configID, autoApply, onAfterChangeCallback);
+    self.charDb.selectedCustomLoadoutID[self.playerSpecID] = nil;
 end
 
 --- @param loadoutInfo TalentLoadoutManager_LoadoutInfo

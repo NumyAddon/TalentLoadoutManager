@@ -20,7 +20,7 @@ end
 
 function Module:UpdateCurrentConfigID()
     self.currentConfigID = C_ClassTalents.GetLastSelectedSavedConfigID(PlayerUtil.GetCurrentSpecID())
-            or (C_ClassTalents.GetStarterBuildActive() and starterConfigID);
+        or (C_ClassTalents.GetStarterBuildActive() and starterConfigID);
 end
 
 function Module:TryRefreshTalentUI()
@@ -109,7 +109,7 @@ function Module:SelectLoadout(configID, autoApply, onAfterChangeCallback)
     self.updatePending, self.pendingDisableStarterBuild, self.pendingConfigID = false, false, nil;
     self.onAfterChangeCallback = nil;
 
-    autoApply = autoApply and true or false;
+    autoApply = not not autoApply;
     local loadResult;
     if configID == self.currentConfigID then
         return;
@@ -121,7 +121,10 @@ function Module:SelectLoadout(configID, autoApply, onAfterChangeCallback)
     if loadResult ~= Enum.LoadConfigResult.Error then
         -- should we do something?
     end
-    if loadResult == Enum.LoadConfigResult.NoChangesNecessary then
+    if
+        loadResult == Enum.LoadConfigResult.NoChangesNecessary
+        or loadResult == Enum.LoadConfigResult.Ready
+    then
         if self.currentConfigID == starterConfigID then C_ClassTalents.SetStarterBuildActive(false); end
         self:UpdateLastSelectedSavedConfigID(configID);
         if onAfterChangeCallback then
