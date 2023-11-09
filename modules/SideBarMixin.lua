@@ -4,7 +4,7 @@ local SideBarMixin = {};
 ns.SideBarMixin = SideBarMixin;
 
 --- @type LibUIDropDownMenu
-local LibDD = LibStub:GetLibrary("LibUIDropDownMenu-4.0");
+local LibDD = LibStub("LibUIDropDownMenuNumy-4.0");
 
 --- @type TalentLoadoutManagerConfig
 local Config = ns.Config;
