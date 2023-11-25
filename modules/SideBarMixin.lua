@@ -317,6 +317,13 @@ function SideBarMixin:CreateImportDialog()
     checkbox:SetScript('OnLeave', function()
         GameTooltip:Hide();
     end);
+    checkbox:SetScript('OnClick', function(cb)
+        local checked = cb:GetChecked();
+        local dialog = cb:GetParent();
+        dialog.NameControl:SetShown(not checked);
+        dialog.NameControl:SetText(checked and '*importing into current loadout*' or '');
+        dialog:UpdateAcceptButtonEnabledState();
+    end);
     checkbox.text = checkbox:CreateFontString(nil, 'ARTWORK', 'GameFontNormal');
     checkbox.text:SetPoint('LEFT', checkbox, 'RIGHT', 0, 1);
     checkbox.text:SetText(string.format('Import into currently selected custom loadout'));
@@ -360,7 +367,7 @@ function SideBarMixin:CreateImportDialog()
 
     dialog:OnLoad();
     dialog:SetScript("OnShow", function()
-        local shouldShowImportIntoCurrent = self.activeLoadout and not not self.activeLoadout.isBlizzardLoadout
+        local shouldShowImportIntoCurrent = self.activeLoadout and not self.activeLoadout.isBlizzardLoadout
         dialog.ImportIntoCurrentLoadoutCheckbox:SetShown(shouldShowImportIntoCurrent);
         if addAutoApplyCheckbox then dialog.AutoApplyCheckbox:SetChecked(Config:GetConfig('autoApply')); end
     end);
