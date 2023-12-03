@@ -39,11 +39,13 @@ end
 
 function Module:ReapplyLoadout()
     local loadoutID = CharacterAPI:GetActiveLoadoutID();
-    if loadoutID then
-        local loadoutInfo = GlobalAPI:GetLoadoutInfoByID(loadoutID);
-        self:Print("Automatically re-applying loadout", loadoutInfo.displayName, ", go to /TLM to disable this behavior.");
-        CharacterAPI:LoadLoadout(loadoutID, true);
-    end
+    if not loadoutID then return end
+
+    local loadoutInfo = GlobalAPI:GetLoadoutInfoByID(loadoutID);
+    if not loadoutInfo then return end
+
+    self:Print("Automatically re-applying loadout", loadoutInfo.displayName, ", go to /TLM to disable this behavior.");
+    CharacterAPI:LoadLoadout(loadoutID, true);
 end
 
 function Module:AddToCombatLockdownQueue(func, ...)
