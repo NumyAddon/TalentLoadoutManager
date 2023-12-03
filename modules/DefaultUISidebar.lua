@@ -1,6 +1,6 @@
 local addonName, ns = ...;
 
---- @type TalentLoadoutManager
+--- @class TalentLoadoutManager
 local TLM = ns.TLM;
 
 --- @type TalentLoadoutManagerConfig
@@ -11,6 +11,7 @@ local API = TalentLoadoutManagerAPI;
 local GlobalAPI = TalentLoadoutManagerAPI.GlobalAPI;
 local CharacterAPI = TalentLoadoutManagerAPI.CharacterAPI;
 
+--- @class TalentLoadoutManager_DefaultUISideBarModule : TalentLoadoutManager_SideBarMixin
 local Module = TLM:NewModule("SideBar", "AceHook-3.0");
 TLM.SideBarModule = Module;
 

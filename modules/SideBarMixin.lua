@@ -1,9 +1,10 @@
 local addonName, ns = ...;
 
+--- @class TalentLoadoutManager_SideBarMixin
 local SideBarMixin = {};
 ns.SideBarMixin = SideBarMixin;
 
---- @type LibUIDropDownMenu
+--- @type LibUIDropDownMenuNumy
 local LibDD = LibStub("LibUIDropDownMenuNumy-4.0");
 
 --- @type TalentLoadoutManagerConfig
@@ -984,7 +985,7 @@ function SideBarMixin:ShowConfigDialog()
 end
 
 function SideBarMixin:TryIntegrateWithBlizzMove()
-    if not self.IntegrateWithBlizzMove or not IsAddOnLoaded('BlizzMove') then return; end
+    if not self.IntegrateWithBlizzMove or not C_AddOns.IsAddOnLoaded('BlizzMove') then return; end
 
     local compatible = false;
     if(BlizzMoveAPI and BlizzMoveAPI.GetVersion and BlizzMoveAPI.RegisterAddOnFrames) then

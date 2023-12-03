@@ -40,7 +40,7 @@ do
     CallbackRegistryMixin.OnLoad(TLM);
 end
 
---- @alias TalentLoadoutManager_LoadoutDisplayInfo
+--- @class TalentLoadoutManager_LoadoutDisplayInfo
 --- @field id number|string  - custom loadouts are prefixed with "C_" to avoid collisions with blizzard loadouts
 --- @field displayName string
 --- @field loadoutInfo TalentLoadoutManager_LoadoutInfo
@@ -51,12 +51,12 @@ end
 --- @field classID number
 --- @field specID number
 
---- @alias TalentLoadoutManager_LoadoutInfo
+--- @class TalentLoadoutManager_LoadoutInfo
 --- @field name string
 --- @field selectedNodes string - serialized loadout
 --- @field id number|string - custom loadouts are prefixed with "C_" to avoid collisions with blizzard loadouts
 
---- @alias TalentLoadoutManager_DeserializedLoadout
+--- @class TalentLoadoutManager_DeserializedLoadout
 --- @field nodeID number
 --- @field entryID number
 --- @field spellID number

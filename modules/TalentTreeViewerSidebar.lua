@@ -1,6 +1,6 @@
 local addonName, ns = ...;
 
---- @type TalentLoadoutManager
+--- @class TalentLoadoutManager
 local TLM = ns.TLM;
 
 --- @type TalentLoadoutManagerAPI_GlobalAPI
@@ -28,7 +28,7 @@ end
 --- @return TalentViewer
 function Module:GetTalentTreeViewer()
     if not TalentViewer then
-        LoadAddOn("TalentTreeViewer")
+        C_AddOns.LoadAddOn("TalentTreeViewer")
         if not TalentViewer then
             error("TalentTreeViewer failed to load")
         end

@@ -18,7 +18,7 @@ TalentLoadoutManagerAPI = {};
 local GlobalAPI = {};
 --- @class TalentLoadoutManagerAPI_CharacterAPI
 local CharacterAPI = {};
---- @type TalentLoadoutManagerAPI
+--- @class TalentLoadoutManagerAPI
 local API = TalentLoadoutManagerAPI;
 
 API.GlobalAPI = GlobalAPI;
@@ -35,7 +35,7 @@ API.Event = {
     LoadoutListUpdated = TLM.Event.LoadoutListUpdated,
 };
 
---- @alias TalentLoadoutManagerAPI_LoadoutInfo
+--- @class TalentLoadoutManagerAPI_LoadoutInfo
 --- @field id number|string - custom loadouts are prefixed with "C_" to avoid collisions with blizzard loadouts
 --- @field displayName string - blizzard loadouts are prefixed with a small Blizzard texture icon
 --- @field name string - the raw loadout name
