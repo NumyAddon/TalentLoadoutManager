@@ -8,7 +8,6 @@ ImportExport.bitWidthHeaderVersion = 8;
 ImportExport.bitWidthSpecID = 16;
 ImportExport.bitWidthRanksPurchased = 6;
 
---- @type LibTalentTree
 local LibTT = LibStub("LibTalentTree-1.0");
 
 local nodeCache = {};

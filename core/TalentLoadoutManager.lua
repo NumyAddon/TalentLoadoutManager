@@ -19,7 +19,6 @@ if not _G.TLM then _G.TLM = TLM; end
 --- @type TalentLoadoutManager_ImportExport
 local ImportExport = ns.ImportExport;
 
---- @type LibTalentTree
 local LibTT = LibStub("LibTalentTree-1.0");
 
 TLM.Event = {
