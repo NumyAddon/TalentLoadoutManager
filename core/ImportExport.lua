@@ -4,6 +4,12 @@ local _, ns = ...
 local ImportExport = {};
 ns.ImportExport = ImportExport;
 
+local LEVELING_BUILD_SERIALIZATION_VERSION = 1;
+local LEVELING_EXPORT_STRING_PATERN = "%s-LVL-%s";
+
+ImportExport.levelingBitWidthVersion = 5;
+ImportExport.levelingBitWidthData = 7; -- allows for 128 order indexes
+
 ImportExport.bitWidthHeaderVersion = 8;
 ImportExport.bitWidthSpecID = 16;
 ImportExport.bitWidthRanksPurchased = 6;
@@ -66,10 +72,10 @@ function ImportExport:BuildSerializedSelectedNodesFromImportString(importText, e
     local loadoutContent = self:ReadLoadoutContent(importStream, treeID);
 
     local serialized = "";
-    --- format: nodeID_entryID_spellID_rank
+    --- format: nodeID_entryID_spellID_rank[_levelRank1_levelRank2_levelRankEtc] (levelRank is optional, and specifies leveling build info)
     local vSep = ns.SERIALIZATION_VALUE_SEPARATOR;
     local nSep = ns.SERIALIZATION_NODE_SEPARATOR;
-    local formatString = "%d" .. vSep .. "%d" .. vSep .. "%d" .. vSep .. "%d" .. nSep;
+    local formatString = "%d" .. vSep .. "%d" .. vSep .. "%d" .. vSep .. "%d" .. "%s" .. nSep;
 
     local nodes = GetTreeNodes(treeID);
     for i, nodeID in pairs(nodes) do
@@ -86,7 +92,8 @@ function ImportExport:BuildSerializedSelectedNodesFromImportString(importText, e
                         nodeID,
                         entryID,
                         definitionInfo.spellID,
-                        indexInfo.isPartiallyRanked and indexInfo.partialRanksPurchased or nodeInfo.maxRanks
+                        indexInfo.isPartiallyRanked and indexInfo.partialRanksPurchased or nodeInfo.maxRanks,
+                        '' -- todo: add leveling info
                     );
                 end
             end
@@ -190,9 +197,23 @@ function ImportExport:ExportLoadoutToString(classIDOrNil, specIDOrNil, deseriali
 
     self:WriteLoadoutContent(exportStream, deserializedLoadout, treeID, classID, specID);
 
-    return exportStream:GetExportString();
+    local loadoutString = exportStream:GetExportString();
+    local levelingBuild = nil; -- todo: add leveling build info
+    if not levelingBuild or not next(levelingBuild) then
+        return loadoutString
+    end
+
+    local levelingExportStream = ExportUtil.MakeExportDataStream();
+    levelingExportStream:AddValue(self.levelingBitWidthVersion, LEVELING_BUILD_SERIALIZATION_VERSION);
+    self:WriteLevelingBuildContent(levelingExportStream, treeID, levelingBuild);
+
+    return LEVELING_EXPORT_STRING_PATERN:format(loadoutString, levelingExportStream:GetExportString());
 end
 
+--- @param deserialized TalentLoadoutManager_DeserializedLoadout[]
+--- @param treeID number
+--- @param classID number
+--- @param specID number
 function ImportExport:WriteLoadoutContent(exportStream, deserialized, treeID, classID, specID)
     --- @type TalentLoadoutManager
     local TLM = ns.TLM;
@@ -243,6 +264,38 @@ function ImportExport:WriteLoadoutContent(exportStream, deserialized, treeID, cl
 
                 exportStream:AddValue(2, entryIndex - 1);
             end
+        end
+    end
+end
+
+--- @param treeID number
+--- @param deserialized TalentLoadoutManager_DeserializedLoadout[]
+--- @param levelingBuild table<number, TalentLoadoutManager_LevelingBuildEntry> # [level] = entry
+function ImportExport:WriteLevelingBuildContent(exportStream, treeID, deserialized, levelingBuild)
+    local purchasedNodesOrder = {};
+    local treeNodes = GetTreeNodes(treeID);
+    local i = 0;
+    for _, treeNodeID in ipairs(treeNodes) do
+        local treeNode = getNodeInfo(treeNodeID);
+        if treeNode.ranksPurchased > 0 then
+            i = i + 1;
+            purchasedNodesOrder[treeNode.ID] = i;
+        end
+    end
+    local numberOfLevelingEntries = 0;
+    for level = 10, ns.MAX_LEVEL do
+        local entry = levelingBuild[level];
+        if entry then
+            numberOfLevelingEntries = numberOfLevelingEntries + 1;
+        end
+    end
+
+    for level = 10, ns.MAX_LEVEL do
+        local entry = levelingBuild[level];
+        exportStream:AddValue(7, entry and purchasedNodesOrder[entry.nodeID] or 0);
+        numberOfLevelingEntries = numberOfLevelingEntries - (entry and 1 or 0);
+        if 0 == numberOfLevelingEntries then
+            break;
         end
     end
 end

@@ -4,6 +4,7 @@
 ---
 --- TalentLoadoutManagerAPI implements CallbackRegistryMixin, so you can register for events.
 ---
+--- Some of the types used, are defined in types.lua
 ------------------------------------------------------------------------------------------------
 
 local addonName, ns = ...;
@@ -34,18 +35,6 @@ API.Event = {
     ---       or a loadout being created/deleted/edited
     LoadoutListUpdated = TLM.Event.LoadoutListUpdated,
 };
-
---- @class TalentLoadoutManagerAPI_LoadoutInfo
---- @field id number|string - custom loadouts are prefixed with "C_" to avoid collisions with blizzard loadouts
---- @field displayName string - blizzard loadouts are prefixed with a small Blizzard texture icon
---- @field name string - the raw loadout name
---- @field serializedNodes string - serialized loadout, this is NOT an export string, but rather an internal TLM format
---- @field owner string|nil - player-realm, only applies to Blizzard loadouts
---- @field playerIsOwner boolean - false for Blizzard loadouts owned by alts
---- @field isBlizzardLoadout boolean
---- @field parentMapping number[]|nil - only set if this is a custom loadout, [playerName-realmName] = parentLoadoutID, position [0] contains the current player's parentLoadoutID if any
---- @field classID number
---- @field specID number
 
 --- @param displayInfo TalentLoadoutManager_LoadoutDisplayInfo
 --- @return TalentLoadoutManagerAPI_LoadoutInfo

@@ -39,28 +39,6 @@ do
     CallbackRegistryMixin.OnLoad(TLM);
 end
 
---- @class TalentLoadoutManager_LoadoutDisplayInfo
---- @field id number|string  - custom loadouts are prefixed with "C_" to avoid collisions with blizzard loadouts
---- @field displayName string
---- @field loadoutInfo TalentLoadoutManager_LoadoutInfo
---- @field owner string|nil
---- @field playerIsOwner boolean
---- @field isBlizzardLoadout boolean
---- @field parentMapping number[]|nil - only set if this is a custom loadout, [playerName-realmName] = parentLoadoutID, position [0] contains the current player's parentLoadoutID if any
---- @field classID number
---- @field specID number
-
---- @class TalentLoadoutManager_LoadoutInfo
---- @field name string
---- @field selectedNodes string - serialized loadout
---- @field id number|string - custom loadouts are prefixed with "C_" to avoid collisions with blizzard loadouts
-
---- @class TalentLoadoutManager_DeserializedLoadout
---- @field nodeID number
---- @field entryID number
---- @field spellID number
---- @field rank number
-
 function TLM:OnInitialize()
     TalentLoadoutManagerDB = TalentLoadoutManagerDB or {};
     TalentLoadoutManagerCharDB = TalentLoadoutManagerCharDB or {};
