@@ -566,6 +566,32 @@ function TLM:PurchaseLoadoutEntryInfo(configID, loadoutEntryInfo, levelingOrder)
     local removed = 0;
 
     if levelingOrder then
+        local notMentionedInLevelingOrder = CopyTable(loadoutEntryInfo);
+        for level = 10, ns.MAX_LEVEL do
+            local entry = levelingOrder[level];
+            if entry and notMentionedInLevelingOrder[entry.nodeID] then
+                notMentionedInLevelingOrder[entry.nodeID] = nil;
+            end
+        end
+        -- first purchase anything not mentioned in the leveling order
+        for nodeID, nodeEntry in pairs(notMentionedInLevelingOrder) do
+            local success = false;
+            if nodeEntry.isChoiceNode then
+                success = C_Traits.SetSelection(configID, nodeEntry.nodeID, nodeEntry.selectionEntryID);
+            elseif nodeEntry.ranksPurchased then
+                for rank = 1, nodeEntry.ranksPurchased do
+                    success = C_Traits.PurchaseRank(configID, nodeEntry.nodeID);
+                end
+            end
+            if success then
+                removed = removed + 1;
+                loadoutEntryInfo[nodeID] = nil;
+            end
+        end
+        if removed > 0 then
+            return removed;
+        end
+
         for level = 10, ns.MAX_LEVEL do
             local entry = levelingOrder[level];
             if entry and loadoutEntryInfo[entry.nodeID] then
@@ -587,6 +613,9 @@ function TLM:PurchaseLoadoutEntryInfo(configID, loadoutEntryInfo, levelingOrder)
                     end
                 end
             end
+        end
+        if removed > 0 then
+            return removed;
         end
     end
 

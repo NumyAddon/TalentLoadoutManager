@@ -134,7 +134,7 @@ function IcyVeinsImport:ParseDataSegment(startingLevel, dataSegment, levelingOrd
 
             local nodeID = nodes[mappingIndex];
             if not nodeID then
-                print(L['Error while importing IcyVeins URL: Could not find node for mapping index'], mappingIndex);
+                print('Error while importing IcyVeins URL: Could not find node for mapping index', mappingIndex);
                 if DevTool and DevTool.AddData then
                     DevTool:AddData({
                         mappingIndex = mappingIndex,

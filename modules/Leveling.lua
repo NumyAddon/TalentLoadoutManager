@@ -1,6 +1,6 @@
 local addonName, ns = ...;
 
---- @type TalentLoadoutManager
+--- @class TalentLoadoutManager
 local TLM = ns.TLM;
 
 --- @type TalentLoadoutManagerConfig
@@ -8,9 +8,10 @@ local Config = ns.Config;
 
 --- @type TalentLoadoutManagerAPI
 local API = TalentLoadoutManagerAPI;
-local GlobalAPI = TalentLoadoutManagerAPI.GlobalAPI;
-local CharacterAPI = TalentLoadoutManagerAPI.CharacterAPI;
+local GlobalAPI = API.GlobalAPI;
+local CharacterAPI = API.CharacterAPI;
 
+--- @class TalentLoadoutManagerModule_Leveling: AceModule, AceHook-3.0, AceEvent-3.0, AceConsole-3.0
 local Module = TLM:NewModule("Leveling", "AceHook-3.0", "AceEvent-3.0", "AceConsole-3.0");
 TLM.LevelingModule = Module;
 
