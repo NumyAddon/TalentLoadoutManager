@@ -19,7 +19,7 @@ TalentLoadoutManagerAPI = {};
 local GlobalAPI = {};
 --- @class TalentLoadoutManagerAPI_CharacterAPI
 local CharacterAPI = {};
---- @class TalentLoadoutManagerAPI
+--- @class TalentLoadoutManagerAPI: CallbackRegistryMixin
 local API = TalentLoadoutManagerAPI;
 
 API.GlobalAPI = GlobalAPI;
@@ -62,14 +62,14 @@ do
     Mixin(API, CallbackRegistryMixin);
     CallbackRegistryMixin.OnLoad(API);
 
-    TLM:RegisterCallback(TLM.Event.CustomLoadoutApplied, function(self, classID, specID, loadoutID, displayInfo)
-        self:TriggerEvent(self.Event.CustomLoadoutApplied, classID, specID, loadoutID, CreateLoadoutInfoFromDisplayInfo(displayInfo));
+    TLM:RegisterCallback(TLM.Event.CustomLoadoutApplied, function(_, classID, specID, loadoutID, displayInfo)
+        API:TriggerEvent(API.Event.CustomLoadoutApplied, classID, specID, loadoutID, CreateLoadoutInfoFromDisplayInfo(displayInfo));
     end, API);
-    TLM:RegisterCallback(TLM.Event.LoadoutUpdated, function(self, classID, specID, loadoutID, displayInfo)
-        self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, loadoutID, CreateLoadoutInfoFromDisplayInfo(displayInfo));
+    TLM:RegisterCallback(TLM.Event.LoadoutUpdated, function(_, classID, specID, loadoutID, displayInfo)
+        API:TriggerEvent(API.Event.LoadoutUpdated, classID, specID, loadoutID, CreateLoadoutInfoFromDisplayInfo(displayInfo));
     end, API);
-    TLM:RegisterCallback(TLM.Event.LoadoutListUpdated, function(self)
-        self:TriggerEvent(self.Event.LoadoutListUpdated);
+    TLM:RegisterCallback(TLM.Event.LoadoutListUpdated, function()
+        API:TriggerEvent(API.Event.LoadoutListUpdated);
     end, API);
 end
 
@@ -135,6 +135,7 @@ function GlobalAPI:GetLoadoutInfoByID(loadoutID)
 end
 
 --- @param loadoutID number|string - the loadout ID, this can be a blizzard ConfigID, or a custom TLM loadout ID
+--- @return string|nil - export string, containing talent information. may also include leveling build information. nil if not found
 function GlobalAPI:GetExportString(loadoutID)
     local displayInfo = TLM:GetLoadoutByID(loadoutID);
 
@@ -187,7 +188,7 @@ function GlobalAPI:RemoveLoadoutFromStorage(loadoutID)
 end
 
 --- Create a new Custom Loadout from an import string
---- @param importText string - the import string
+--- @param importText string - the import string (icy-veins calculator URLs are also supported)
 --- @param loadoutName string - the name of the new loadout
 --- @return TalentLoadoutManagerAPI_LoadoutInfo|boolean, string|nil - the new loadout info, or false if there was an error; second return value is the error message if there was an error
 function GlobalAPI:ImportCustomLoadout(importText, loadoutName)
@@ -198,19 +199,21 @@ function GlobalAPI:ImportCustomLoadout(importText, loadoutName)
 end
 
 --- Update an existing Custom Loadout from an import string
+--- This will clear leveling build information, unless the import string contains it!
 --- @param loadoutID number|string - the loadout ID
---- @param importText string - the import string
---- @return TalentLoadoutManagerAPI_LoadoutInfo|boolean, string|nil - updated loadout info, if the update was successful, false if there was an error; second return value is the error message if there was an error
+--- @param importText string - the import string (icy-veins calculator URLs are also supported)
+--- @return TalentLoadoutManagerAPI_LoadoutInfo|boolean  - updated loadout info, if the update was successful, false if there was an error
+--- @return string|nil - error message on failures
 function GlobalAPI:UpdateCustomLoadoutWithImportString(loadoutID, importText)
     local loadoutInfo = self:GetLoadoutInfoByID(loadoutID);
     if not loadoutInfo then
         return false, "Loadout not found";
     end
-    local result, errorOrNil = TLM:BuildSerializedSelectedNodesFromImportString(importText, loadoutInfo.classID, loadoutInfo.specID);
+    local result, errorOrLevelingOrder = TLM:BuildSerializedSelectedNodesFromImportString(importText, loadoutInfo.classID, loadoutInfo.specID);
     if result then
-        TLM:UpdateCustomLoadout(loadoutID, result);
+        TLM:UpdateCustomLoadout(loadoutID, result, errorOrLevelingOrder);
     end
-    return result and self:GetLoadoutInfoByID(loadoutID) or false, errorOrNil;
+    return result and self:GetLoadoutInfoByID(loadoutID) or false, (not result and errorOrLevelingOrder or nil);
 end
 
 -------------------------------------------------------------------------
@@ -270,18 +273,19 @@ function CharacterAPI:LoadLoadout(loadoutID, autoApply)
 end
 
 --- Update a custom loadout with the current talents
+--- This will clear any leveling build information!
 function CharacterAPI:UpdateCustomLoadoutWithCurrentTalents(loadoutID)
     local configID = C_ClassTalents.GetActiveConfigID();
     if not configID then return; end
 
-    local selectedNodes = TLM:SerializeLoadout(C_ClassTalents.GetActiveConfigID());
+    local selectedNodes = TLM:SerializeLoadout(configID);
     TLM:UpdateCustomLoadout(loadoutID, selectedNodes);
 end
 
 --- Create a new custom loadout from the current talents
 --- The new loadout will be set as active automatically
 --- @param loadoutName string - the name of the new loadout
---- @return TalentLoadoutManagerAPI_LoadoutInfo - the new loadout info
+--- @return TalentLoadoutManagerAPI_LoadoutInfo|nil - the new loadout info, nil if there was an error finding the created loadout
 function CharacterAPI:CreateCustomLoadoutFromCurrentTalents(loadoutName)
     local loadoutInfo = TLM:CreateCustomLoadoutFromActiveTalents(loadoutName, nil, nil);
 
@@ -289,13 +293,14 @@ function CharacterAPI:CreateCustomLoadoutFromCurrentTalents(loadoutName)
 end
 
 --- Create a new custom loadout from an import string
---- @param importText string - the import string
+--- @param importText string - the import string (icy-veins calculator URLs are also supported)
 --- @param loadoutName string - the name of the new loadout
 --- @param autoApply boolean - if true, the talent changes will be applied immediately, if false, they are left pending
---- @return TalentLoadoutManagerAPI_LoadoutInfo, string|nil - the new loadout info, second return value is the error message if there was an error
+--- @return TalentLoadoutManagerAPI_LoadoutInfo|false - the new loadout info, or false on error
+--- @return string|nil - error message if there was an error
 function CharacterAPI:ImportCustomLoadout(importText, loadoutName, autoApply)
     local validateClassAndSpec, load = true, true;
     local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, autoApply, loadoutName, validateClassAndSpec, load);
 
-    return newLoadoutInfo and GlobalAPI:GetLoadoutInfoByID(newLoadoutInfo.id), errorOrNil;
+    return newLoadoutInfo and GlobalAPI:GetLoadoutInfoByID(newLoadoutInfo.id) or false, errorOrNil or 'Could not find newly imported loadout';
 end

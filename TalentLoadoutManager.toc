@@ -12,6 +12,7 @@
 libs\embeds.xml
 
 core\ImportExport.lua
+core\IcyVeinsImport.lua
 core\TalentLoadoutManager.lua
 core\ManagerApi.lua
 core\BlizzardLoadoutChanger.lua

@@ -11,7 +11,7 @@ local API = TalentLoadoutManagerAPI;
 local GlobalAPI = TalentLoadoutManagerAPI.GlobalAPI;
 local CharacterAPI = TalentLoadoutManagerAPI.CharacterAPI;
 
---- @class TalentLoadoutManager_DefaultUISideBarModule : TalentLoadoutManager_SideBarMixin
+--- @class TalentLoadoutManager_DefaultUISideBarModule: TalentLoadoutManager_SideBarMixin, AceModule, AceHook-3.0
 local Module = TLM:NewModule("SideBar", "AceHook-3.0");
 TLM.SideBarModule = Module;
 
@@ -54,6 +54,7 @@ function Module:GetDefaultActionText(elementData)
 end
 
 function Module:UpdateCustomLoadoutWithCurrentTalents(loadoutID)
+    -- todo: add warning if the loadout has leveling information, as that'll get lost
     CharacterAPI:UpdateCustomLoadoutWithCurrentTalents(loadoutID);
     self:TryShowLoadoutCompleteAnimation();
 end

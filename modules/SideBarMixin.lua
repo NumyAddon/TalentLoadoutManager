@@ -4,7 +4,7 @@ local addonName, ns = ...;
 local SideBarMixin = {};
 ns.SideBarMixin = SideBarMixin;
 
---- @type LibUIDropDownMenuNumy
+--- @type LibUIDropDownMenuNumy-4.0
 local LibDD = LibStub("LibUIDropDownMenuNumy-4.0");
 
 --- @type TalentLoadoutManagerConfig

@@ -6,6 +6,7 @@ local TLM = ns.TLM;
 --- @type TalentLoadoutManagerAPI_GlobalAPI
 local GlobalAPI = TalentLoadoutManagerAPI.GlobalAPI;
 
+--- @class TalentLoadoutManager_TTVSideBarModule: TalentLoadoutManager_SideBarMixin, AceModule, AceHook-3.0
 local Module = TLM:NewModule("TTVSideBar", "AceHook-3.0");
 TLM.TTVSideBarModule = Module;
 
@@ -53,6 +54,7 @@ end
 
 function Module:UpdateCustomLoadoutWithCurrentTalents(loadoutID)
     local importString = self:GetTalentTreeViewer():ExportLoadout();
+    -- todo: check if importString contains lvling info, if it doesn't, and current loadout does, show warning
     local result, errorOrNil = GlobalAPI:UpdateCustomLoadoutWithImportString(loadoutID, importString);
     if result then
         self:TryShowLoadoutCompleteAnimation();
@@ -83,11 +85,21 @@ function Module:DoCreate(name)
 end
 
 function Module:DoImport(importText, loadoutName, autoApply)
-    return GlobalAPI:ImportCustomLoadout(importText, loadoutName);
+    local loadoutInfo, errorOrNil = GlobalAPI:ImportCustomLoadout(importText, loadoutName);
+    if loadoutInfo.specID ~= self:GetTalentsTab():GetSpecID() then
+        self:GetTalentTreeViewer():SelectSpec(loadoutInfo.classID, loadoutInfo.specID);
+    end
+
+    return loadoutInfo, errorOrNil;
 end
 
 function Module:DoImportIntoCurrent(importText, autoApply)
-    return GlobalAPI:UpdateCustomLoadoutWithImportString(self.activeLoadout.id, importText);
+    local loadoutInfo, errorOrNil =  GlobalAPI:UpdateCustomLoadoutWithImportString(self.activeLoadout.id, importText);
+    if loadoutInfo.specID ~= self:GetTalentsTab():GetSpecID() then
+        self:GetTalentTreeViewer():SelectSpec(loadoutInfo.classID, loadoutInfo.specID);
+    end
+
+    return loadoutInfo, errorOrNil;
 end
 
 function Module:GetBlizzMoveFrameTable()
