@@ -4,7 +4,7 @@ local addonName, ns = ...;
 local SideBarMixin = {};
 ns.SideBarMixin = SideBarMixin;
 
---- @type LibUIDropDownMenuNumy
+--- @type LibUIDropDownMenuNumy-4.0
 local LibDD = LibStub("LibUIDropDownMenuNumy-4.0");
 
 --- @type TalentLoadoutManagerConfig
@@ -250,7 +250,7 @@ function SideBarMixin:CreateImportDialog()
     --- import control
     dialog.ImportControl = CreateFrame("Frame", nil, dialog);
     local importControl = dialog.ImportControl;
-    importControl.labelText = HUD_CLASS_TALENTS_IMPORT_DIALOG_EDIT_BOX_LABEL;
+    importControl.labelText = HUD_CLASS_TALENTS_IMPORT_DIALOG_EDIT_BOX_LABEL .. "(Icy-veins calculator links are also supported)";
     importControl:SetPoint("TOPLEFT", dialog.ContentArea);
     importControl:SetPoint("TOPRIGHT", dialog.ContentArea);
     importControl:SetHeight(100);

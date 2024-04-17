@@ -44,6 +44,14 @@ function Config:GetOptions()
                 type = "description",
                 name = "Version: " .. self.version,
             },
+            levelingBuildDescription = {
+                order = orderCount(),
+                type = "description",
+                name =
+[[TalentLoadoutManager supports importing leveling builds, through any import string or ingame link that includes leveling info, or through Icy Veins calculator links.
+You can create a leveling build yourself, either using the IcyVeins talent calculator, or ingame, using the Talent Tree Viewer addon
+]],
+            },
             autoApplyOnLevelUp = {
                 order = orderCount(),
                 type = "toggle",
