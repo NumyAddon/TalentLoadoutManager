@@ -56,3 +56,19 @@
 --- @field spellID number
 --- @field rank number
 --- @field levelingInfo table<number, number> - [level] = targetRank
+
+--- @class TLM_ElementFrame: Button
+
+--- @alias TLM_ConfigOptions
+---|"autoApplyOnLevelUp"
+---|"autoScale"
+---|"autoPosition"
+---|"autoApply"
+---|"integrateWithSimc"
+---|"sideBarBackgroundColor"
+---|"sideBarActiveElementTextColor"
+---|"sideBarActiveElementBackgroundColor"
+---|"sideBarActiveElementHighlightBackgroundColor"
+---|"sideBarInactiveElementTextColor"
+---|"sideBarInactiveElementBackgroundColor"
+---|"sideBarInactiveElementHighlightBackgroundColor"

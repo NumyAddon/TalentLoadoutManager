@@ -194,6 +194,7 @@ function SideBarMixin:SetupHook()
     API:RegisterCallback(API.Event.LoadoutListUpdated, self.RefreshSideBarData, self);
 end
 
+--- @return Frame
 function SideBarMixin:GetTalentsTab()
     -- override in implementation
 end
@@ -440,6 +441,7 @@ end
 
 function SideBarMixin:CreateSideBar()
     local talentsTab = self:GetTalentsTab();
+    --- @class TLM_SideBar : Frame
     local sideBar = CreateFrame("Frame", nil, talentsTab);
     local width = 300;
 
@@ -450,7 +452,14 @@ function SideBarMixin:CreateSideBar()
     -- add a background
     sideBar.Background = sideBar:CreateTexture(nil, "BACKGROUND");
     sideBar.Background:SetAllPoints();
-    sideBar.Background:SetColorTexture(0, 0, 0, 0.8);
+    local function updateSideBarColor()
+        local color = Config:GetConfig('sideBarBackgroundColor');
+        sideBar.Background:SetColorTexture(color.r, color.g, color.b, color.a);
+    end
+    updateSideBarColor();
+    Config:RegisterCallback(Config.Event.OptionValueChanged, function(_, option)
+        if option == 'sideBarBackgroundColor' then updateSideBarColor(); end
+    end, sideBar);
 
     -- add a title
     sideBar.Title = sideBar:CreateFontString(nil, "OVERLAY", "GameFontNormal");
@@ -512,7 +521,7 @@ function SideBarMixin:CreateSideBar()
     sideBar.ToggleSideBarButton:SetScript("OnEnter", function()
         GameTooltip:SetOwner(sideBar.ToggleSideBarButton, "ANCHOR_RIGHT");
         GameTooltip:SetText("Toggle Sidebar");
-        GameTooltip:AddLine("|cffeda55fShift + Click|r to move the sidebar to the other side of the UI.", 1, 1, 1, true);
+        GameTooltip:AddLine("|cffeda55fShift + Click|r to move the side bar to the other side of the UI.", 1, 1, 1, true);
         GameTooltip:Show();
     end);
     sideBar.ToggleSideBarButton:SetScript("OnClick", function()
@@ -536,7 +545,7 @@ function SideBarMixin:CreateSideBar()
             StaticPopup_Show(self.copyDialogName, nil, nil, url);
         end);
 
-        -- add a warning on the bottom of the sidebar
+        -- add a warning on the bottom of the sideBar
         sideBar.Warning = sideBar:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge");
         sideBar.Warning:SetPoint("BOTTOMLEFT", sideBar.WarningLink, "TOPLEFT", 0, 0);
         sideBar.Warning:SetWidth(width - 50);
@@ -557,6 +566,7 @@ function SideBarMixin:CreateSideBar()
 end
 
 function SideBarMixin:CreateScrollBox(parentContainer)
+    --- @class TLM_SideBarContainerFrame : Frame
     local ContainerFrame = CreateFrame("Frame", nil, parentContainer);
 
     ContainerFrame.ScrollBar = CreateFrame("EventFrame", nil, ContainerFrame, "WowTrimScrollBar");
@@ -566,8 +576,28 @@ function SideBarMixin:CreateScrollBox(parentContainer)
     ContainerFrame.ScrollBox = CreateFrame("Frame", nil, ContainerFrame, "WowScrollBoxList");
     ContainerFrame.ScrollBox:SetPoint("TOPLEFT");
     ContainerFrame.ScrollBox:SetPoint("BOTTOMRIGHT", ContainerFrame.ScrollBar, "BOTTOMLEFT");
+    --- @param frame TLM_ElementFrame
+    local function elementFrameApplyColors(frame)
+        local isSelected = (frame == self.activeLoadoutFrame);
+        local textColor = isSelected
+            and Config:GetConfig('sideBarActiveElementTextColor')
+            or Config:GetConfig('sideBarInactiveElementTextColor');
+        local backgroundColor = isSelected
+            and Config:GetConfig('sideBarActiveElementBackgroundColor')
+            or Config:GetConfig('sideBarInactiveElementBackgroundColor');
+        local highlightBackgroundColor = isSelected
+            and Config:GetConfig('sideBarActiveElementHighlightBackgroundColor')
+            or Config:GetConfig('sideBarInactiveElementHighlightBackgroundColor');
 
+        frame.Text:SetTextColor(textColor.r, textColor.g, textColor.b, textColor.a);
+        frame.Background:SetColorTexture(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a);
+        frame.HighlightBackground:SetColorTexture(highlightBackgroundColor.r, highlightBackgroundColor.g, highlightBackgroundColor.b, highlightBackgroundColor.a);
+    end
+
+    --- @param frame TLM_ElementFrame
     local function OnListElementInitialized(frame, elementData)
+        --- @class TLM_ElementFrame
+        local frame = frame;
         if not frame.Background then
             frame.Background = frame:CreateTexture(nil, "BACKGROUND");
             frame.Background:SetAllPoints(frame);
@@ -582,14 +612,11 @@ function SideBarMixin:CreateScrollBox(parentContainer)
         if not frame.HighlightBackground then
             frame.HighlightBackground = frame:CreateTexture(nil, "BACKGROUND");
             frame.HighlightBackground:SetAllPoints(frame);
-            frame.HighlightBackground:SetColorTexture(0.5, 0.5, 0.5, 0.5);
             frame.HighlightBackground:Hide();
         end
 
-        frame.Background:SetColorTexture(0, 0, 0, 0.5);
         if elementData.isActive then
             self.activeLoadoutFrame = frame;
-            frame.Background:SetColorTexture(0.2, 0.2, 0.2, 0.5);
         end
         local text = elementData.text;
         if elementData.parentID then
@@ -597,6 +624,14 @@ function SideBarMixin:CreateScrollBox(parentContainer)
         end
         frame.Text:SetText(text);
 
+        frame.ApplyColors = elementFrameApplyColors;
+        frame:ApplyColors();
+
+        Config:RegisterCallback(Config.Event.OptionValueChanged, function(_, option)
+            if Config.sideBarColorOptionKeys[option] then
+                frame:ApplyColors();
+            end
+        end, frame);
         frame:SetScript("OnClick", function(_, button)
             if button == "LeftButton" then
                 self:OnElementClick(frame, elementData.data);
@@ -788,11 +823,12 @@ end
 
 function SideBarMixin:SetElementAsActive(frame, elementData)
     self.activeLoadout = elementData;
-    if self.activeLoadoutFrame then
-        self.activeLoadoutFrame.Background:SetColorTexture(0, 0, 0, 0.5);
-    end
+    local previouslyActiveLoadoutFrame = self.activeLoadoutFrame;
     self.activeLoadoutFrame = frame;
-    frame.Background:SetColorTexture(0.2, 0.2, 0.2, 0.5);
+    if previouslyActiveLoadoutFrame then
+        previouslyActiveLoadoutFrame:ApplyColors();
+    end
+    frame:ApplyColors();
     self.SideBar.SaveButton:SetEnabled(self.activeLoadout and not self.activeLoadout.isBlizzardLoadout);
 end
 

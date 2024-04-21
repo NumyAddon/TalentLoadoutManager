@@ -49,8 +49,8 @@ end
 
 function Module:GetDefaultActionText(elementData)
     return (elementData.data.playerIsOwner and elementData.data.isBlizzardLoadout) and "Load & Apply"
-            or Config:GetConfig('autoApply') and "Load & Apply"
-            or "Load";
+        or Config:GetConfig('autoApply') and "Load & Apply"
+        or "Load";
 end
 
 function Module:UpdateCustomLoadoutWithCurrentTalents(loadoutID)
