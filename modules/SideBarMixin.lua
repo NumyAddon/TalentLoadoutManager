@@ -992,6 +992,12 @@ function SideBarMixin:RefreshSideBarData()
 
     local loadouts = self:GetLoadouts();
 
+    local previouslyActiveLoadoutFrame = self.activeLoadoutFrame;
+    self.activeLoadoutFrame = nil;
+    if previouslyActiveLoadoutFrame then
+        previouslyActiveLoadoutFrame:ApplyColors();
+    end
+
     self.activeLoadout = self:GetActiveLoadout(true);
     local foundActiveLoadout = false;
     local activeLoadoutID = self.activeLoadout and self.activeLoadout.id or nil;
@@ -1008,7 +1014,6 @@ function SideBarMixin:RefreshSideBarData()
         end
     end
     if not foundActiveLoadout then
-        self.activeLoadoutFrame = nil;
         self.activeLoadout = nil;
     end
     self:SortElements();

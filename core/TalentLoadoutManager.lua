@@ -45,6 +45,19 @@ do
 end
 
 function TLM:OnInitialize()
+    if NumyProfiler then
+        --- @type NumyProfiler
+        local NumyProfiler = NumyProfiler;
+        NumyProfiler:WrapModules(addonName, 'Main', self);
+        NumyProfiler:WrapModules(addonName, 'IcyVeinsImport', IcyVeinsImport);
+        NumyProfiler:WrapModules(addonName, 'ImportExport', ImportExport);
+        NumyProfiler:WrapModules(addonName, 'Config', ns.Config);
+        NumyProfiler:WrapModules(addonName, 'API', TalentLoadoutManagerAPI);
+
+        for moduleName, module in self:IterateModules() do
+            NumyProfiler:WrapModules(addonName, moduleName, module);
+        end
+    end
     TalentLoadoutManagerDB = TalentLoadoutManagerDB or {};
     TalentLoadoutManagerCharDB = TalentLoadoutManagerCharDB or {};
     self.db = TalentLoadoutManagerDB;
@@ -562,6 +575,69 @@ end
 --- @param loadoutEntryInfo table<number, TalentLoadoutManager_LoadoutEntryInfo> # [nodeID] = entryInfo
 --- @param levelingOrder table<number, TalentLoadoutManager_LevelingBuildEntry>|nil - [level] = entry
 --- @return number number of removed entries (due to successful purchases)
+function TLM:ResetAndPurchaseLoadoutEntries(configID, loadoutEntryInfo, levelingOrder)
+    local totalEntriesRemoved = 0;
+    if true or levelingOrder or UnitLevel('player') ~= ns.MAX_LEVEL then
+        C_Traits.ResetTree(configID, self:GetTreeID());
+        while (true) do
+            local removed = self:PurchaseLoadoutEntryInfo(configID, loadoutEntryInfo, levelingOrder);
+            if (0 == removed) then
+                break;
+            end
+            totalEntriesRemoved = totalEntriesRemoved + removed;
+        end
+    else
+        -- I think I need to rewrite this, to do a refund pass, and then do looping purchase passes, until everything is purchased, or nothing can be purchased anymore
+        for _, nodeID in ipairs(C_Traits.GetTreeNodes(self:GetTreeID())) do
+            local nodeInfo = C_Traits.GetNodeInfo(configID, nodeID);
+            local loadoutEntryInfoForNode = loadoutEntryInfo[nodeID];
+            local success = false;
+            if nodeInfo then
+                if Enum.TraitNodeType.Selection == nodeInfo.type then
+                    if (nodeInfo.activeEntry and nodeInfo.activeEntry.entryID) ~= (loadoutEntryInfoForNode and loadoutEntryInfoForNode.selectionEntryID) then
+                        success = C_Traits.SetSelection(configID, nodeID, (loadoutEntryInfoForNode and loadoutEntryInfoForNode.selectionEntryID or nil), false);
+                    elseif loadoutEntryInfoForNode and (nodeInfo.activeEntry and nodeInfo.activeEntry.entryID) == loadoutEntryInfoForNode.selectionEntryID then
+                        success = true;
+                    end
+                else
+                    if nodeInfo.ranksPurchased > (loadoutEntryInfoForNode and loadoutEntryInfoForNode.ranksPurchased or 0) then
+                        -- refund ranks
+                        for rank = nodeInfo.ranksPurchased, ((loadoutEntryInfoForNode and loadoutEntryInfoForNode.ranksPurchased or 0) + 1), -1 do
+                            success = C_Traits.RefundRank(configID, nodeID, false);
+                        end
+                    elseif nodeInfo.ranksPurchased < (loadoutEntryInfoForNode and loadoutEntryInfoForNode.ranksPurchased or 0) then
+                        -- purchase ranks
+                        for rank = nodeInfo.ranksPurchased, ((loadoutEntryInfoForNode and loadoutEntryInfoForNode.ranksPurchased or 0) - 1) do
+                            success = C_Traits.PurchaseRank(configID, nodeID);
+                        end
+                    elseif nodeInfo.ranksPurchased == (loadoutEntryInfoForNode and loadoutEntryInfoForNode.ranksPurchased or 0) then
+                        success = true;
+                    end
+                end
+            end
+            if success then
+                loadoutEntryInfo[nodeID] = nil;
+                totalEntriesRemoved = totalEntriesRemoved + 1;
+            end
+        end
+        if next(loadoutEntryInfo) then
+            while (true) do
+                local removed = self:PurchaseLoadoutEntryInfo(configID, loadoutEntryInfo, levelingOrder);
+                if (0 == removed) then
+                    break;
+                end
+                totalEntriesRemoved = totalEntriesRemoved + removed;
+            end
+        end
+    end
+
+    return totalEntriesRemoved;
+end
+
+--- @param configID number
+--- @param loadoutEntryInfo table<number, TalentLoadoutManager_LoadoutEntryInfo> # [nodeID] = entryInfo
+--- @param levelingOrder table<number, TalentLoadoutManager_LevelingBuildEntry>|nil - [level] = entry
+--- @return number number of removed entries (due to successful purchases)
 function TLM:PurchaseLoadoutEntryInfo(configID, loadoutEntryInfo, levelingOrder)
     local removed = 0;
 
@@ -624,7 +700,8 @@ function TLM:PurchaseLoadoutEntryInfo(configID, loadoutEntryInfo, levelingOrder)
         if nodeEntry.isChoiceNode then
             success = C_Traits.SetSelection(configID, nodeEntry.nodeID, nodeEntry.selectionEntryID);
         elseif nodeEntry.ranksPurchased then
-            for rank = 1, nodeEntry.ranksPurchased do
+            local nodeInfo = C_Traits.GetNodeInfo(configID, nodeID);
+            for rank = 1, (nodeEntry.ranksPurchased - (nodeInfo and nodeInfo.ranksPurchased or 0)) do
                 success = C_Traits.PurchaseRank(configID, nodeEntry.nodeID);
             end
         end
@@ -772,15 +849,8 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
 
         return true;
     end
-    C_Traits.ResetTree(activeConfigID, self:GetTreeID());
-
-    while(true) do
-        local removed = self:PurchaseLoadoutEntryInfo(activeConfigID, loadoutEntryInfo, levelingOrder);
-        if(removed == 0) then
-            break;
-        end
-        entriesCount = entriesCount - removed;
-    end
+    local entriesPurchased = self:ResetAndPurchaseLoadoutEntries(activeConfigID, loadoutEntryInfo, levelingOrder);
+    entriesCount = entriesCount - entriesPurchased;
 
     if entriesCount > 0 then
         self:Print("Failed to fully apply loadout. " .. entriesCount .. " entries could not be purchased.");

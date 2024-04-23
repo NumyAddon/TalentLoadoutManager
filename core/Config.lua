@@ -170,7 +170,7 @@ You can create a leveling build yourself, either using the IcyVeins talent calcu
             sideBarInactiveElementHighlightBackgroundColor = {
                 order = orderCount(),
                 type = 'color',
-                name = 'Loadout Highlight Background',
+                name = 'Loadout Highlight',
                 desc = 'The background color of loadouts in the side bar when hovered.',
                 set = SetColor,
                 get = GetColor,
