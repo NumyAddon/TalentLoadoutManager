@@ -530,9 +530,9 @@ function SideBarMixin:CreateSideBar()
 
     -- add a scrollbox frame
     local dataProvider
-    sideBar.ScrollBox, dataProvider = self:CreateScrollBox(sideBar);
-    sideBar.ScrollBox:SetPoint("TOPLEFT", sideBar.SaveButton, "BOTTOMLEFT", 0, -10);
-    sideBar.ScrollBox:SetPoint("BOTTOMRIGHT", sideBar, "BOTTOMRIGHT", -10, 10);
+    sideBar.ScrollBoxContainer, dataProvider = self:CreateScrollBox(sideBar);
+    sideBar.ScrollBoxContainer:SetPoint("TOPLEFT", sideBar.SaveButton, "BOTTOMLEFT", 0, -10);
+    sideBar.ScrollBoxContainer:SetPoint("BOTTOMRIGHT", sideBar, "BOTTOMRIGHT", -10, 10);
 
     if self.ImplementTTTMissingWarning and not IsAddOnLoaded('TalentTreeTweaks') then
         -- add a link to the addon
@@ -903,8 +903,7 @@ function SideBarMixin:OpenInTalentTreeViewer(elementData)
     TalentViewer:ImportLoadout(exportString);
 end
 
-function SideBarMixin:SortElements()
-    local dataProvider = self.DataProvider;
+function SideBarMixin:SortElements(dataProviderEntries)
     --- order by:
     --- 1. playerIsOwner
     --- 2. isBlizzardLoadout
@@ -945,7 +944,7 @@ function SideBarMixin:SortElements()
         return false;
     end
 
-    local elements = CopyTable(dataProvider:GetCollection());
+    local elements = CopyTable(dataProviderEntries);
 
     table.sort(elements, compare);
     local lookup = {};
@@ -963,7 +962,7 @@ function SideBarMixin:SortElements()
         end
     end
 
-    dataProvider:SetSortComparator(function(a, b)
+    table.sort(dataProviderEntries, function(a, b)
         if not b then
             return false;
         end
@@ -975,7 +974,6 @@ function SideBarMixin:SortElements()
         end
         return a.order < b.order;
     end);
-    dataProvider:ClearSortComparator();
 end
 
 function SideBarMixin:GetLoadouts()
@@ -987,9 +985,6 @@ function SideBarMixin:GetActiveLoadout(forceRefresh)
 end
 
 function SideBarMixin:RefreshSideBarData()
-    local dataProvider = self.DataProvider;
-    dataProvider:Flush();
-
     local loadouts = self:GetLoadouts();
 
     local previouslyActiveLoadoutFrame = self.activeLoadoutFrame;
@@ -1001,9 +996,10 @@ function SideBarMixin:RefreshSideBarData()
     self.activeLoadout = self:GetActiveLoadout(true);
     local foundActiveLoadout = false;
     local activeLoadoutID = self.activeLoadout and self.activeLoadout.id or nil;
+    local dataProviderEntries = {}
     for _, loadout in pairs(loadouts) do
         loadout.parentID = loadout.parentMapping and loadout.parentMapping[0];
-        dataProvider:Insert({
+        table.insert(dataProviderEntries, {
             text = loadout.displayName,
             data = loadout,
             isActive = loadout.id == activeLoadoutID,
@@ -1016,7 +1012,9 @@ function SideBarMixin:RefreshSideBarData()
     if not foundActiveLoadout then
         self.activeLoadout = nil;
     end
-    self:SortElements();
+    self:SortElements(dataProviderEntries);
+    self.DataProvider = CreateDataProvider(dataProviderEntries);
+    self.SideBar.ScrollBoxContainer.ScrollBox:SetDataProvider(self.DataProvider);
 
     self.SideBar.SaveButton:SetEnabled(self.activeLoadout and not self.activeLoadout.isBlizzardLoadout);
 end

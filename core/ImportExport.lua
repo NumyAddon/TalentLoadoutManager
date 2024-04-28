@@ -284,13 +284,43 @@ function ImportExport:ConvertToImportLoadoutEntryInfo(treeID, loadoutContent)
     return results;
 end
 
---- @param deserializedLoadout table<number, TalentLoadoutManager_DeserializedLoadout> [nodeID] = deserializedNode
---- @param levelingBuild table<number, TalentLoadoutManager_LevelingBuildEntry> # [level] = entry
-function ImportExport:ExportLoadoutToString(classIDOrNil, specIDOrNil, deserializedLoadout, levelingBuild)
-    local LOADOUT_SERIALIZATION_VERSION = C_Traits.GetLoadoutSerializationVersion and C_Traits.GetLoadoutSerializationVersion() or 1;
+function ImportExport:TryExportBlizzardLoadoutToString(configID, specID)
+    local loadoutString = C_Traits.GenerateImportString(configID);
+    if not loadoutString or '' == loadoutString then
+        return nil;
+    end
 
-    local classID = tonumber(classIDOrNil);
-    local specID = tonumber(specIDOrNil);
+    local exportStream = ExportUtil.MakeExportDataStream();
+    local importStream = ExportUtil.MakeImportDataStream(loadoutString);
+
+    if importStream:ExtractValue(self.bitWidthHeaderVersion) ~= 1 then
+        return nil; -- only version 1 is supported
+    end
+
+    local headerSpecID = importStream:ExtractValue(self.bitWidthSpecID);
+    if headerSpecID == specID then
+        return loadoutString; -- no update needed
+    end
+
+    exportStream:AddValue(self.bitWidthHeaderVersion, 1);
+    exportStream:AddValue(self.bitWidthSpecID, specID);
+    local remainingBits = importStream:GetNumberOfBits() - self.bitWidthHeaderVersion - self.bitWidthSpecID;
+    -- copy the remaining bits in batches of 16
+    while remainingBits > 0 do
+        local bitsToCopy = math.min(remainingBits, 16);
+        exportStream:AddValue(bitsToCopy, importStream:ExtractValue(bitsToCopy));
+        remainingBits = remainingBits - bitsToCopy;
+    end
+
+    return exportStream:GetExportString();
+end
+
+--- @param classID number
+--- @param specID number
+--- @param deserializedLoadout table<number, TalentLoadoutManager_DeserializedLoadout> [nodeID] = deserializedNode
+--- @param levelingBuild nil|table<number, TalentLoadoutManager_LevelingBuildEntry> # [level] = entry
+function ImportExport:ExportLoadoutToString(classID, specID, deserializedLoadout, levelingBuild)
+    local LOADOUT_SERIALIZATION_VERSION = C_Traits.GetLoadoutSerializationVersion and C_Traits.GetLoadoutSerializationVersion() or 1;
 
     local exportStream = ExportUtil.MakeExportDataStream();
     local treeID = LibTT:GetClassTreeId(classID);
