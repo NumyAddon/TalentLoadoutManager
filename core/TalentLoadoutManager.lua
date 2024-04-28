@@ -63,12 +63,12 @@ function TLM:OnInitialize()
     self.db = TalentLoadoutManagerDB;
     self.charDb = TalentLoadoutManagerCharDB;
     self.cache = {
-        loadoutByIDCache = {},
+        loadoutByID = {},
         exportStrings = {},
         deserializationCache = {},
         deserializationLevelingCache = {},
-        treeNodeCache = {},
-        orderedTreeNodeCache = {},
+        treeNodes = {},
+        orderedTreeNodes = {},
         spellNodeMap = {},
     };
 
@@ -148,7 +148,7 @@ function TLM:TRAIT_CONFIG_DELETED(_, configID)
         self.charDb.customLoadoutConfigID[specID] = nil;
     end
 
-    self.cache.loadoutByIDCache[configID] = nil;
+    self.cache.loadoutByID[configID] = nil;
 end
 
 function TLM:CONFIG_COMMIT_FAILED(_, configID)
@@ -191,7 +191,7 @@ function TLM:SetParentLoadout(childLoadoutID, parentLoadoutID)
 end
 
 function TLM:RebuildLoadoutByIDCache()
-    self.cache.loadoutByIDCache = {};
+    self.cache.loadoutByID = {};
     for classID, specList in pairs(self.db.blizzardLoadouts) do
         for specID, playerList in pairs(specList) do
             for playerName, loadoutList in pairs(playerList) do
@@ -211,7 +211,7 @@ function TLM:RebuildLoadoutByIDCache()
                         classID = classID,
                         specID = specID,
                     };
-                    self.cache.loadoutByIDCache[configID] = displayInfo;
+                    self.cache.loadoutByID[configID] = displayInfo;
                 end
             end
         end
@@ -232,7 +232,7 @@ function TLM:RebuildLoadoutByIDCache()
                     classID = classID,
                     specID = specID,
                 };
-                self.cache.loadoutByIDCache[loadoutID] = displayInfo;
+                self.cache.loadoutByID[loadoutID] = displayInfo;
             end
         end
     end
@@ -359,7 +359,7 @@ function TLM:UpdateBlizzardLoadouts()
         self.db.blizzardLoadouts[classID][specID] = self.db.blizzardLoadouts[classID][specID] or {};
         if self.db.blizzardLoadouts[classID][specID][self.playerName] then
             for configID, _ in pairs(self.db.blizzardLoadouts[classID][specID][self.playerName]) do
-                self.cache.loadoutByIDCache[configID] = nil;
+                self.cache.loadoutByID[configID] = nil;
             end
         end
         self.db.blizzardLoadouts[classID][specID][self.playerName] = {};
@@ -405,7 +405,7 @@ function TLM:UpdateBlizzardLoadout(configID, specID)
             classID = classID,
             specID = specID,
         };
-        self.cache.loadoutByIDCache[configID] = displayInfo;
+        self.cache.loadoutByID[configID] = displayInfo;
         self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, configID, displayInfo);
     else
         self:Print("Failed to serialize loadout " .. configID);
@@ -440,7 +440,7 @@ function TLM:UpdateCustomLoadout(customLoadoutID, selectedNodes, levelingOrder, 
             classID = classID,
             specID = specID,
         }
-        self.cache.loadoutByIDCache[customLoadoutID] = displayInfo;
+        self.cache.loadoutByID[customLoadoutID] = displayInfo;
         self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, customLoadoutID, displayInfo);
     end
 end
@@ -599,7 +599,7 @@ end
 --- @param rawData boolean|nil - if true, the raw saved variable information is returned
 --- @return TalentLoadoutManager_LoadoutDisplayInfo|nil
 function TLM:GetLoadoutByID(loadoutID, rawData)
-    local displayInfo = self.cache.loadoutByIDCache[loadoutID];
+    local displayInfo = self.cache.loadoutByID[loadoutID];
     if rawData then return displayInfo; end
 
     if displayInfo then
@@ -614,7 +614,7 @@ end
 function TLM:GetAllLoadouts()
     local loadouts = {};
     local activeLoadoutID = self:GetActiveLoadoutID();
-    for loadoutID, displayInfo in pairs(self.cache.loadoutByIDCache) do
+    for loadoutID, displayInfo in pairs(self.cache.loadoutByID) do
         displayInfo = Mixin({}, displayInfo);
         displayInfo.isActive = activeLoadoutID == loadoutID;
         table.insert(loadouts, displayInfo);
@@ -925,7 +925,7 @@ function TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specI
         classID = classID,
         specID = specID,
     }
-    self.cache.loadoutByIDCache[id] = displayInfo;
+    self.cache.loadoutByID[id] = displayInfo;
     self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, id, displayInfo);
     self:TriggerEvent(self.Event.LoadoutListUpdated);
 
@@ -994,7 +994,7 @@ function TLM:RenameCustomLoadout(classIDOrNil, specIDOrNil, loadoutID, newName)
             classID = classID,
             specID = specID,
         }
-        self.cache.loadoutByIDCache[loadoutID] = displayInfo;
+        self.cache.loadoutByID[loadoutID] = displayInfo;
         self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, loadoutID, displayInfo);
         self:TriggerEvent(self.Event.LoadoutListUpdated);
 
@@ -1022,7 +1022,7 @@ function TLM:DeleteCustomLoadout(classIDOrNil, specIDOrNil, loadoutID)
 
     if self.db.customLoadouts[classID] and self.db.customLoadouts[classID][specID] and self.db.customLoadouts[classID][specID][loadoutID] then
         self.db.customLoadouts[classID][specID][loadoutID] = nil;
-        self.cache.loadoutByIDCache[loadoutID] = nil;
+        self.cache.loadoutByID[loadoutID] = nil;
 
         self:TriggerEvent(self.Event.LoadoutListUpdated);
 
@@ -1040,7 +1040,7 @@ function TLM:DeleteBlizzardLoadout(configID)
         return false;
     end
 
-    self.cache.loadoutByIDCache[configID] = nil;
+    self.cache.loadoutByID[configID] = nil;
     if
         self.db.blizzardLoadouts[classID]
         and self.db.blizzardLoadouts[classID][specID]
