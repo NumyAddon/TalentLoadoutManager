@@ -267,6 +267,10 @@ function TLM:GetTreeNodes(treeID, orderByPosition)
             table.sort(nodes, function(a, b)
                 local aCol, aRow = LibTT:GetNodeGridPosition(a);
                 local bCol, bRow = LibTT:GetNodeGridPosition(b);
+                if not aCol or not aRow or not bCol or not bRow then
+                    return false;
+                end
+
                 if aRow == bRow then
                     return aCol < bCol;
                 end
