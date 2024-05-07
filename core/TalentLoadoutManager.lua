@@ -452,6 +452,7 @@ end
 --- @param configID number
 --- @return string|false serialized loadout
 function TLM:SerializeLoadout(configID, specID)
+    specID = specID or self.playerSpecID;
     local importString = ImportExport:TryExportBlizzardLoadoutToString(configID, specID);
     if importString and importString ~= "" then
         return (self:BuildSerializedSelectedNodesFromImportString(importString));
