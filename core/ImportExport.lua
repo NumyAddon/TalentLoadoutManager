@@ -364,6 +364,15 @@ function ImportExport:WriteLoadoutContent(exportStream, deserialized, treeID, cl
             for _, entryID in pairs(nodeInfo.entryIDs) do
                 if entryID == info.entryID then
                     nodeInfoExists = true;
+                    break;
+                else
+                    local entryInfo = LibTT:GetEntryInfo(entryID);
+                    local definitionInfo = entryInfo and entryInfo.definitionID and C_Traits.GetDefinitionInfo(entryInfo.definitionID);
+                    if definitionInfo and definitionInfo.spellID == info.spellID then
+                        nodeInfoExists = true;
+                        info.entryID = entryID;
+                        break;
+                    end
                 end
             end
         end

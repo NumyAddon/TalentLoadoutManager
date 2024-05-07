@@ -25,6 +25,9 @@
 --- @field nodeID number
 --- @field targetRank number
 
+--- @class TalentLoadoutManager_LevelingBuildEntry_withEntry: TalentLoadoutManager_LevelingBuildEntry
+--- @field entryID number|nil
+
 --- @class TalentLoadoutManager_LoadoutEntryInfo
 --- @field nodeID number
 --- @field ranksPurchased number

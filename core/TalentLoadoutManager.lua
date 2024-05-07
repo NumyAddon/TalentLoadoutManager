@@ -574,6 +574,16 @@ function TLM:LoadoutInfoToEntryInfo(loadoutInfo)
                 if entryID == loadoutNodeInfo.entryID then
                     nodeInfoExists = true;
                     isChoiceNode = Enum.TraitNodeType.Selection == nodeInfo.type;
+                    break;
+                else
+                    local nodeEntryInfo = C_Traits.GetEntryInfo(configID, entryID);
+                    local definitionInfo = nodeEntryInfo and nodeEntryInfo.definitionID and C_Traits.GetDefinitionInfo(nodeEntryInfo.definitionID);
+                    if definitionInfo and definitionInfo.spellID == loadoutNodeInfo.spellID then
+                        nodeInfoExists = true;
+                        loadoutNodeInfo.entryID = entryID;
+                        isChoiceNode = Enum.TraitNodeType.Selection == nodeInfo.type;
+                        break;
+                    end
                 end
             end
         end

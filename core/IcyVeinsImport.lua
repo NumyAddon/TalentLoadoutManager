@@ -68,7 +68,7 @@ function IcyVeinsImport:BuildSerializedSelectedNodesFromUrl(fullUrl, expectedCla
                     local currentRank = selectedNodesByID[entry.nodeID] and selectedNodesByID[entry.nodeID].rank or 0;
                     selectedNodesByID[entry.nodeID] = {
                         nodeID = entry.nodeID,
-                        entryID = entry.entryID,
+                        entryID = entryID,
                         spellID = definitionInfo.spellID,
                         rank = math.max(entry.targetRank, currentRank),
                     };
@@ -96,7 +96,7 @@ end
 --- @param url string
 --- @return nil|number # classID
 --- @return nil|number # specID
---- @return nil|table<number, TalentLoadoutManager_LevelingBuildEntry> # [level] = entry
+--- @return nil|table<number, TalentLoadoutManager_LevelingBuildEntry_withEntry> # [level] = entry
 function IcyVeinsImport:ParseUrl(url)
     local dataSection = url:match('#(.*)');
 
@@ -119,6 +119,7 @@ function IcyVeinsImport:ParseUrl(url)
     return classID, specID, levelingOrder;
 end
 
+--- @param levelingOrder table<number, TalentLoadoutManager_LevelingBuildEntry_withEntry> # [level] = entry
 function IcyVeinsImport:ParseDataSegment(startingLevel, dataSegment, levelingOrder, nodes)
     local splitDataSegment = {};
     for char in string.gmatch(dataSegment, '.') do
@@ -152,6 +153,7 @@ function IcyVeinsImport:ParseDataSegment(startingLevel, dataSegment, levelingOrd
                 local entry = nodeInfo.type == Enum.TraitNodeType.Selection and nodeInfo.entryIDs and nodeInfo.entryIDs[entryIndex] or nil;
                 rankByNodeID[nodeID] = (rankByNodeID[nodeID] or 0) + 1;
 
+                --- @type TalentLoadoutManager_LevelingBuildEntry_withEntry
                 levelingOrder[level] = {
                     nodeID = nodeID,
                     entryID = entry,
