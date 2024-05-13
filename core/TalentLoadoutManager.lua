@@ -105,6 +105,7 @@ function TLM:TRAIT_CONFIG_LIST_UPDATED()
     self.playerSpecID = PlayerUtil.GetCurrentSpecID(); ---@diagnostic disable-line: assign-type-mismatch
     self:RebuildLoadoutByIDCache();
     self:UpdateBlizzardLoadouts();
+    self:DetectDeletedParents();
 
     self:RegisterEvent("TRAIT_CONFIG_UPDATED");
     self:RegisterEvent("TRAIT_CONFIG_DELETED");
@@ -149,6 +150,7 @@ function TLM:TRAIT_CONFIG_DELETED(_, configID)
     end
 
     self.cache.loadoutByID[configID] = nil;
+    self:DetectDeletedParents();
 end
 
 function TLM:CONFIG_COMMIT_FAILED(_, configID)
@@ -188,6 +190,25 @@ function TLM:SetParentLoadout(childLoadoutID, parentLoadoutID)
 
     self:TriggerEvent(self.Event.LoadoutUpdated, displayInfo.classID, displayInfo.specID, displayInfo.id, displayInfo);
     self:TriggerEvent(self.Event.LoadoutListUpdated);
+end
+
+function TLM:DetectDeletedParents()
+    local anyDeleted = false;
+    local classID = self.playerClassID;
+    for _, loadoutList in pairs(self.db.customLoadouts[classID] or {}) do
+        for loadoutID, loadoutInfo in pairs(loadoutList) do
+            local parentConfigID = loadoutInfo.parentMapping and loadoutInfo.parentMapping[self.playerName] or nil;
+            if parentConfigID and not self.cache.loadoutByID[parentConfigID] then
+                loadoutInfo.parentMapping[self.playerName] = nil;
+                self.cache.loadoutByID[loadoutID].parentMapping = self:GetParentMappingForLoadout(loadoutInfo, loadoutInfo.specID);
+                anyDeleted = true;
+            end
+        end
+    end
+
+    if anyDeleted then
+        self:TriggerEvent(self.Event.LoadoutListUpdated);
+    end
 end
 
 function TLM:RebuildLoadoutByIDCache()
