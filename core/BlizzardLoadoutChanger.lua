@@ -136,6 +136,17 @@ function Module:SelectLoadout(configID, autoApply, onAfterChangeCallback)
             RunNextFrame(function() securecall(onAfterChangeCallback); end);
         end
     elseif loadResult == Enum.LoadConfigResult.LoadInProgress then
+        --- @type Frame|nil
+        local talentsTab = ClassTalentFrame and ClassTalentFrame.TalentsTab; ---@diagnostic disable-line: undefined-global
+        local talentsTabIsVisible = talentsTab and talentsTab.IsVisible and talentsTab:IsVisible();
+        if talentsTab and talentsTabIsVisible then
+            local activeConfigID = C_ClassTalents.GetActiveConfigID();
+            local stagedNodes = activeConfigID and C_Traits.GetStagedPurchases(activeConfigID);
+            if stagedNodes and next(stagedNodes) then
+                talentsTab.stagedPurchaseNodes = C_Traits.GetStagedPurchases(activeConfigID);
+                talentsTab:SetCommitVisualsActive(true, TalentFrameBaseMixin.VisualsUpdateReasons.CommitOngoing, true);
+            end
+        end
         if self.currentConfigID == starterConfigID then self.pendingDisableStarterBuild = true; end
         self.updatePending = true;
         self.pendingConfigID = configID;

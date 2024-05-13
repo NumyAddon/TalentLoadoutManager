@@ -777,6 +777,16 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
         self:Print("Failed to commit loadout.");
         return false;
     end
+    --- @type Frame|nil
+    local talentsTab = ClassTalentFrame and ClassTalentFrame.TalentsTab; ---@diagnostic disable-line: undefined-global
+    local talentsTabIsVisible = talentsTab and talentsTab.IsVisible and talentsTab:IsVisible();
+    if autoApply and talentsTab and talentsTabIsVisible then
+        local stagedNodes = C_Traits.GetStagedPurchases(activeConfigID);
+        if next(stagedNodes) then
+            talentsTab.stagedPurchaseNodes = C_Traits.GetStagedPurchases(activeConfigID);
+            talentsTab:SetCommitVisualsActive(true, TalentFrameBaseMixin.VisualsUpdateReasons.CommitOngoing, true);
+        end
+    end
 
     self.charDb.selectedCustomLoadoutID[self.playerSpecID] = loadoutInfo.id;
     local namePrefix = loadoutInfo.levelingOrder and CreateAtlasMarkup("GarrMission_CurrencyIcon-Xp", 16, 16) or "";
@@ -801,13 +811,6 @@ end
 --- @param levelingOrder table<number, TalentLoadoutManager_LevelingBuildEntry>|nil - [level] = entry
 --- @return number number of removed entries (due to successful purchases)
 function TLM:ResetAndPurchaseLoadoutEntries(configID, loadoutEntryInfo, levelingOrder)
-    --- @type Frame|nil
-    local talentsTab = ClassTalentFrame and ClassTalentFrame.TalentsTab; ---@diagnostic disable-line: undefined-global
-    local talentsTabWasVisible = talentsTab and talentsTab.IsVisible and talentsTab:IsVisible();
-    if talentsTab and talentsTabWasVisible then
-        -- prevent the UI from updating while we're doing this, it'll all be deferred to OnShow instead
-        talentsTab:Hide();
-    end
     local totalEntriesRemoved = 0;
     C_Traits.ResetTree(configID, self:GetTreeID());
     while (true) do
@@ -816,9 +819,6 @@ function TLM:ResetAndPurchaseLoadoutEntries(configID, loadoutEntryInfo, leveling
             break;
         end
         totalEntriesRemoved = totalEntriesRemoved + removed;
-    end
-    if talentsTab and talentsTabWasVisible then
-        talentsTab:Show();
     end
 
     return totalEntriesRemoved;
