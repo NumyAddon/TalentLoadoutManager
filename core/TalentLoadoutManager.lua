@@ -111,6 +111,7 @@ function TLM:TRAIT_CONFIG_LIST_UPDATED()
     self:RegisterEvent("TRAIT_CONFIG_DELETED");
     self:RegisterEvent("CONFIG_COMMIT_FAILED");
     self:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED");
+    self:RegisterEvent("PLAYER_ENTERING_WORLD");
 end
 
 function TLM:TRAIT_CONFIG_UPDATED()
@@ -161,6 +162,13 @@ function TLM:CONFIG_COMMIT_FAILED(_, configID)
 end
 
 function TLM:ACTIVE_PLAYER_SPECIALIZATION_CHANGED()
+    self.playerSpecID = PlayerUtil.GetCurrentSpecID(); ---@diagnostic disable-line: assign-type-mismatch
+    self:TriggerEvent(self.Event.LoadoutListUpdated);
+end
+
+function TLM:PLAYER_ENTERING_WORLD()
+    -- forced respecs from LFG queues, do not trigger ACTIVE_PLAYER_SPECIALIZATION_CHANGED event
+    if self.playerSpecID == PlayerUtil.GetCurrentSpecID() then return; end
     self.playerSpecID = PlayerUtil.GetCurrentSpecID(); ---@diagnostic disable-line: assign-type-mismatch
     self:TriggerEvent(self.Event.LoadoutListUpdated);
 end
