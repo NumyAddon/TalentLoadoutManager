@@ -534,7 +534,7 @@ function SideBarMixin:CreateSideBar()
     sideBar.ScrollBoxContainer:SetPoint("TOPLEFT", sideBar.SaveButton, "BOTTOMLEFT", 0, -10);
     sideBar.ScrollBoxContainer:SetPoint("BOTTOMRIGHT", sideBar, "BOTTOMRIGHT", -10, 10);
 
-    if self.ImplementTTTMissingWarning and not IsAddOnLoaded('TalentTreeTweaks') then
+    if self.ImplementTTTMissingWarning and not C_AddOns.IsAddOnLoaded('TalentTreeTweaks') then
         -- add a link to the addon
         sideBar.WarningLink = CreateFrame("Button", nil, sideBar, "UIPanelButtonTemplate, UIButtonTemplate");
         sideBar.WarningLink:SetSize(width - 50, 20);
@@ -750,7 +750,7 @@ function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
         openInTTV = {
             text = "Open in TalentTreeViewer",
             notCheckable = true,
-            disabled = not (GetAddOnEnableState(UnitName('player'), 'TalentTreeViewer') == 2),
+            disabled = not (C_AddOns.GetAddOnEnableState(UnitName('player'), 'TalentTreeViewer') == 2),
             func = function()
                 self:OpenInTalentTreeViewer(elementData);
             end,
@@ -896,7 +896,7 @@ function SideBarMixin:OpenInTalentTreeViewer(elementData)
     if not exportString then
         return;
     end
-    LoadAddOn('TalentTreeViewer');
+    C_AddOns.LoadAddOn('TalentTreeViewer');
     if not TalentViewer or not TalentViewer.ImportLoadout then
         return;
     end

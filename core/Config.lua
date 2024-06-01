@@ -220,10 +220,10 @@ end
 --- @param option TLM_ConfigOptions
 function Config:IsOptionDisabled(option)
     if 'autoScale' == option then
-        return IsAddOnLoaded('BlizzMove') or IsAddOnLoaded('TalentTreeTweaks');
+        return C_AddOns.IsAddOnLoaded('BlizzMove') or C_AddOns.IsAddOnLoaded('TalentTreeTweaks');
     end
     if 'integrateWithSimc' == option then
-        return not IsAddOnLoaded('Simulationcraft');
+        return not C_AddOns.IsAddOnLoaded('Simulationcraft');
     end
 
     return false;
