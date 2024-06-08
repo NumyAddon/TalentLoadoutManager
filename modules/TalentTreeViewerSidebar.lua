@@ -104,15 +104,11 @@ end
 
 function Module:GetBlizzMoveFrameTable()
     return {
-        ['TalentTreeViewer'] = {
+        [TalentViewerLoader and TalentViewerLoader:GetLodAddonName() or 'TalentTreeViewer'] = {
             ['TalentViewer_DF'] = {
-                MinVersion = 100000,
                 SubFrames = {
-                    ['TalentViewer_DF.Talents.ButtonsParent'] = {
-                        MinVersion = 100000,
-                    },
+                    ['TalentViewer_DF.Talents.ButtonsParent'] = {},
                     ["TLM-TTVSideBar"] = {
-                        MinVersion = 100000,
                         FrameReference = self.SideBar,
                         Detachable = true,
                     },

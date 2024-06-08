@@ -150,7 +150,7 @@ function IcyVeinsImport:ParseDataSegment(startingLevel, dataSegment, levelingOrd
             else
                 local entryIndex = nextChar == '1' and 2 or 1;
                 local nodeInfo = LibTT:GetNodeInfo(nodeID);
-                local entry = nodeInfo.type == Enum.TraitNodeType.Selection and nodeInfo.entryIDs and nodeInfo.entryIDs[entryIndex] or nil;
+                local entry = (nodeInfo.type == Enum.TraitNodeType.Selection or nodeInfo.type == Enum.TraitNodeType.SubTreeSelection) and nodeInfo.entryIDs and nodeInfo.entryIDs[entryIndex] or nil;
                 rankByNodeID[nodeID] = (rankByNodeID[nodeID] or 0) + 1;
 
                 --- @type TalentLoadoutManager_LevelingBuildEntry_withEntry

@@ -750,7 +750,10 @@ function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
         openInTTV = {
             text = "Open in TalentTreeViewer",
             notCheckable = true,
-            disabled = not (C_AddOns.GetAddOnEnableState('TalentTreeViewer', UnitName('player')) == 2),
+            disabled = C_AddOns.GetAddOnEnableState(
+                TalentViewerLoader and TalentViewerLoader:GetLodAddonName() or 'TalentTreeViewer',
+                UnitName('player')
+            ) ~= 2,
             func = function()
                 self:OpenInTalentTreeViewer(elementData);
             end,
@@ -896,7 +899,12 @@ function SideBarMixin:OpenInTalentTreeViewer(elementData)
     if not exportString then
         return;
     end
-    C_AddOns.LoadAddOn('TalentTreeViewer');
+    if TalentViewerLoader then
+        TalentViewerLoader:LoadTalentViewer();
+    else
+        C_AddOns.LoadAddOn('TalentTreeViewer');
+    end
+    local TalentViewer = TalentViewerLoader:GetTalentViewer() or _G.TalentViewer;
     if not TalentViewer or not TalentViewer.ImportLoadout then
         return;
     end

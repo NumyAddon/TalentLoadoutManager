@@ -261,7 +261,7 @@ function ImportExport:ConvertToImportLoadoutEntryInfo(treeID, loadoutContent)
 
         if (indexInfo.isNodeSelected) then
             local treeNode = LibTT:GetNodeInfo(treeNodeID);
-            local isChoiceNode = treeNode.type == Enum.TraitNodeType.Selection;
+            local isChoiceNode = treeNode.type == Enum.TraitNodeType.Selection or treeNode.type == Enum.TraitNodeType.SubTreeSelection;
             local choiceNodeSelection = indexInfo.isChoiceNode and indexInfo.choiceNodeSelection or nil;
             if indexInfo.isNodeSelected and isChoiceNode ~= indexInfo.isChoiceNode then
                 -- guard against corrupt import strings
@@ -398,7 +398,7 @@ function ImportExport:WriteLoadoutContent(exportStream, deserialized, treeID, cl
                 exportStream:AddValue(self.bitWidthRanksPurchased, info.rank);
             end
 
-            local isChoiceNode = nodeInfo and nodeInfo.type == Enum.TraitNodeType.Selection;
+            local isChoiceNode = nodeInfo and (nodeInfo.type == Enum.TraitNodeType.Selection or nodeInfo.type == Enum.TraitNodeType.SubTreeSelection);
             exportStream:AddValue(1, isChoiceNode and 1 or 0);
             if isChoiceNode then
                 local entryIndex = 0;
