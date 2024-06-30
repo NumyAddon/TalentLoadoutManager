@@ -1,8 +1,9 @@
 # Dragonflight Leveling Talent Build export string format
 
-- Version: 1
+- Version: 1 (Used during Dragonflight, for The War Within use version 2+)
 - Date: April 2024
-- Authoritative Source: [github.com/NumyAddon/TalentTreeViewer](https://github.com/NumyAddon/TalentTreeViewer/blob/master/TalentTreeViewer/levelingBuildFormat.md) 
+- Authoritative Source: [github.com/NumyAddon/TalentTreeViewer](https://github.com/NumyAddon/TalentTreeViewer/blob/master/TalentTreeViewer/levelingBuildFormat.md)
+- The War Within version: [github.com/NumyAddon/TalentTreeViewer](https://github.com/NumyAddon/TalentTreeViewer/blob/master/TalentTreeViewer_TWW/levelingBuildFormat.md)
 
 ## Purpose
 The purpose of the export string is to provide a way to save and share the order in which talents are learned while leveling.
@@ -21,7 +22,7 @@ The leveling build string is a base64-encoded string, made of a sequence of of v
 The base64-encoding is done using Blizzard's modified base64 encoding. One can use their `ExportUtil` helper to read/write the string.
 
 ### Header
-5 bits: `0b00001` - Header, describing the version of the format. 
+5 bits: `0b00001` - Header, describing the version of the format.
 Currently this is `1`, any changes to the format, will increment the version, even if the changes are backwards compatible.
 
 ### Body
@@ -37,13 +38,13 @@ For example, if the leveling build starts at level 50.
 This also means that if the leveling build only covers e.g. spec talents, then every other value will be `0`.
 Within a tree, it's invalid to have a value of `0` after a non-zero value, as it results in ambiguity.
 
-A value of `1` indicates that the talent learned at that level is the first talent in the filtered `C_Traits.GetNodes` list. 
+A value of `1` indicates that the talent learned at that level is the first talent in the filtered `C_Traits.GetNodes` list.
 
 The number of integers in the body must be equal to the number of talents selected in the `<TalentBuild>`.
 
 #### Example
 Lets say there are 4 talents learned in `<TalentBuild>`, A B C and D.
-Talent A and C are class talents, and ignored by the leveling build, talent D is learned at level 11, and talent C is learned at level 13.
+Talent A and C are class talents, and ignored by the leveling build, talent D is learned at level 11, and talent B is learned at level 13.
 
 This results in a body with the following values (`_` is added for readability) `0b000_0000 0b000_0100 0b000_0000 0b000_0011` (base10 `0 4 0 3`)
 
