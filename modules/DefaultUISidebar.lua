@@ -11,7 +11,7 @@ local API = TalentLoadoutManagerAPI;
 local GlobalAPI = TalentLoadoutManagerAPI.GlobalAPI;
 local CharacterAPI = TalentLoadoutManagerAPI.CharacterAPI;
 
---- @class TalentLoadoutManager_DefaultUISideBarModule: TalentLoadoutManager_SideBarMixin, AceModule, AceHook-3.0
+--- @class TLM_DefaultUISideBarModule: TLM_SideBarMixin, AceModule, AceHook-3.0
 local Module = TLM:NewModule("SideBar", "AceHook-3.0");
 TLM.SideBarModule = Module;
 
@@ -29,6 +29,9 @@ function Module:OnEnable()
     EventUtil.ContinueOnAddOnLoaded("Blizzard_ClassTalentUI", function()
         self:SetupHook();
     end);
+    EventUtil.ContinueOnAddOnLoaded("Blizzard_PlayerSpells", function()
+        self:SetupHook();
+    end);
 end
 
 function Module:OnDisable()
@@ -38,7 +41,7 @@ function Module:OnDisable()
 end
 
 function Module:GetTalentsTab()
-    return ClassTalentFrame.TalentsTab;
+    return ClassTalentFrame and ClassTalentFrame.TalentsTab or PlayerSpellsFrame.TalentsFrame;
 end
 
 function Module:SetupHook()
@@ -94,24 +97,39 @@ end
 
 function Module:GetBlizzMoveFrameTable()
     return {
-        ["Blizzard_ClassTalentUI"] = {
-            ["ClassTalentFrame"] =
-            {
+        ["Blizzard_ClassTalentUI"] = { --- @todo: delete in TWW
+            ["ClassTalentFrame"] = {
                 MinVersion = 100000,
-                SubFrames =
-                {
-                    ["ClassTalentFrame.TalentsTab.ButtonsParent"] =
-                    {
+                MaxVersion = 110000,
+                SubFrames = {
+                    ["ClassTalentFrame.TalentsTab.ButtonsParent"] = {
                         MinVersion = 100000,
+                        MaxVersion = 110000,
                     },
-                    ["ClassTalentFrame.TalentsTab"] =
-                    {
+                    ["ClassTalentFrame.TalentsTab"] = {
                         MinVersion = 100000,
-                        SubFrames =
-                        {
-                            ["TLM-SideBar"] =
-                            {
-                                MinVersion = 100000,
+                        MaxVersion = 110000,
+                        SubFrames = {
+                            ["TLM-SideBar"] = {
+                                FrameReference = self.SideBar,
+                                Detachable = true,
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        ["Blizzard_PlayerSpells"] = {
+            ["PlayerSpellsFrame"] = {
+                MinVersion = 110000,
+                SubFrames = {
+                    ["PlayerSpellsFrame.TalentsFrame.ButtonsParent"] = {
+                        MinVersion = 110000,
+                    },
+                    ["PlayerSpellsFrame.TalentsFrame"] = {
+                        MinVersion = 110000,
+                        SubFrames = {
+                            ["TLM-SideBar"] = {
                                 FrameReference = self.SideBar,
                                 Detachable = true,
                             },

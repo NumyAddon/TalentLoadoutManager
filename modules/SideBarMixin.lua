@@ -1,6 +1,6 @@
 local addonName, ns = ...;
 
---- @class TalentLoadoutManager_SideBarMixin
+--- @class TLM_SideBarMixin
 local SideBarMixin = {};
 ns.SideBarMixin = SideBarMixin;
 

@@ -36,7 +36,7 @@ API.Event = {
     LoadoutListUpdated = TLM.Event.LoadoutListUpdated,
 };
 
---- @param displayInfo TalentLoadoutManager_LoadoutDisplayInfo
+--- @param displayInfo TLM_LoadoutDisplayInfo
 --- @return TalentLoadoutManagerAPI_LoadoutInfo
 local function CreateLoadoutInfoFromDisplayInfo(displayInfo)
     return {

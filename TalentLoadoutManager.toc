@@ -11,7 +11,8 @@
 
 libs\embeds.xml
 
-core\ImportExport.lua
+core\ImportExportV1.lua
+core\ImportExportV2.lua
 core\IcyVeinsImport.lua
 core\TalentLoadoutManager.lua
 core\ManagerApi.lua

@@ -9,7 +9,7 @@
 --- @field displayName string - blizzard loadouts are prefixed with a small Blizzard icon, leveling builds have an XP icon prefixed
 --- @field name string - the raw loadout name
 --- @field serializedNodes string - serialized loadout, this is NOT an export string, but rather an internal TLM format
---- @field serializedLevelingOrder string|nil - serialized leveling order, nil if no leveling information is attached
+--- @field serializedLevelingOrder string|nil - serialized leveling order, nil if no leveling information is attached, it's also an internal TLM format
 --- @field owner string|nil - player-realm, only applies to Blizzard loadouts
 --- @field playerIsOwner boolean - false for Blizzard loadouts owned by alts
 --- @field isBlizzardLoadout boolean
@@ -21,23 +21,30 @@
 ----- private -----
 -------------------
 
---- @class TalentLoadoutManager_LevelingBuildEntry
+--- @class TLM_LevelingBuildEntry
 --- @field nodeID number
---- @field targetRank number
+--- @field targetRank number # for choice nodes, this is always 1
 
---- @class TalentLoadoutManager_LevelingBuildEntry_withEntry: TalentLoadoutManager_LevelingBuildEntry
+--- @class TLM_LevelingBuildEntry_withEntry: TLM_LevelingBuildEntry
 --- @field entryID number|nil
 
---- @class TalentLoadoutManager_LoadoutEntryInfo
+--- @class TLM_LevelingBuildEntry_withLevel: TLM_LevelingBuildEntry
+--- @field level number
+
+--- @class TLM_LevelingBuild
+--- @field entries table<number, table<number, TLM_LevelingBuildEntry_withEntry>> # [tree] = {[level] = entry}, where tree is 1 for class, 2 for spec, or tree is SubTreeID for hero specs
+--- @field selectedSubTreeID number? # Selected Hero Spec ID, if any
+
+--- @class TLM_LoadoutEntryInfo
 --- @field nodeID number
 --- @field ranksPurchased number
 --- @field selectionEntryID number
 --- @field isChoiceNode boolean
 
---- @class TalentLoadoutManager_LoadoutDisplayInfo
+--- @class TLM_LoadoutDisplayInfo
 --- @field id number|string  - custom loadouts are prefixed with "C_" to avoid collisions with blizzard loadouts
 --- @field displayName string
---- @field loadoutInfo TalentLoadoutManager_LoadoutInfo
+--- @field loadoutInfo TLM_LoadoutInfo
 --- @field owner string|nil
 --- @field playerIsOwner boolean
 --- @field isBlizzardLoadout boolean
@@ -45,20 +52,19 @@
 --- @field classID number
 --- @field specID number
 
---- @class TalentLoadoutManager_LoadoutInfo_partial
+--- @class TLM_LoadoutInfo_partial
 --- @field name string
 --- @field selectedNodes string - serialized loadout
 --- @field levelingOrder string|nil - serialized leveling order
 
---- @class TalentLoadoutManager_LoadoutInfo: TalentLoadoutManager_LoadoutInfo_partial
+--- @class TLM_LoadoutInfo: TLM_LoadoutInfo_partial
 --- @field id number|string - custom loadouts are prefixed with "C_" to avoid collisions with blizzard loadouts
 
---- @class TalentLoadoutManager_DeserializedLoadout
+--- @class TLM_DeserializedLoadout
 --- @field nodeID number
 --- @field entryID number
---- @field spellID number
+--- @field spellID number # instead contains the SubTreeID, if the node is a subtree selection node
 --- @field rank number
---- @field levelingInfo table<number, number> - [level] = targetRank
 
 --- @class TLM_ElementFrame: Button
 

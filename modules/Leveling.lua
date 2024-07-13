@@ -11,7 +11,7 @@ local API = TalentLoadoutManagerAPI;
 local GlobalAPI = API.GlobalAPI;
 local CharacterAPI = API.CharacterAPI;
 
---- @class TalentLoadoutManagerModule_Leveling: AceModule, AceHook-3.0, AceEvent-3.0, AceConsole-3.0
+--- @class TLMModule_Leveling: AceModule, AceHook-3.0, AceEvent-3.0, AceConsole-3.0
 local Module = TLM:NewModule("Leveling", "AceHook-3.0", "AceEvent-3.0", "AceConsole-3.0");
 TLM.LevelingModule = Module;
 

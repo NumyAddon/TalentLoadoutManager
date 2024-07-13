@@ -1,18 +1,22 @@
 local _, ns = ...
 
---- @class TalentLoadoutManager_ImportExport
+local LOADOUT_SERIALIZATION_VERSION = 2;
+if C_Traits.GetLoadoutSerializationVersion() ~= LOADOUT_SERIALIZATION_VERSION then return; end
+
+--- @class TLM_ImportExportV2
 local ImportExport = {};
 ns.ImportExport = ImportExport;
 
-local LEVELING_BUILD_SERIALIZATION_VERSION = 1;
+local HERO_SELECTION_NODE_LEVEL = 71;
+local LEVELING_BUILD_SERIALIZATION_VERSION = 2;
 local LEVELING_EXPORT_STRING_PATERN = "%s-LVL-%s";
 
-ImportExport.levelingBitWidthVersion = 5;
-ImportExport.levelingBitWidthData = 7; -- allows for 128 order indexes
+local LEVELING_BIT_WIDTH_VERSION = 5;
+local LEVELING_BIT_WIDTH_DATA = 7; -- allows for 128 levels
 
-ImportExport.bitWidthHeaderVersion = 8;
-ImportExport.bitWidthSpecID = 16;
-ImportExport.bitWidthRanksPurchased = 6;
+local BIT_WIDTH_HEADER_VERSION = 8;
+local BIT_WIDTH_SPEC_ID = 16;
+local BIT_WIDTH_RANKS_PURCHASED = 6;
 
 local LibTT = LibStub("LibTalentTree-1.0");
 
@@ -48,8 +52,8 @@ end
 --- @return string|nil # error message on failure, serializedLevelingOrder (if any) on success
 --- @return number|nil # actual classID on success
 --- @return number|nil # actual specID on success
+--- @public
 function ImportExport:BuildSerializedSelectedNodesFromImportString(importText, expectedClassID, expectedSpecID)
-    local LOADOUT_SERIALIZATION_VERSION = C_Traits.GetLoadoutSerializationVersion and C_Traits.GetLoadoutSerializationVersion() or 1;
     local importStream = ExportUtil.MakeImportDataStream(importText);
 
     local headerValid, serializationVersion, specIDFromString, treeHash = self:ReadLoadoutHeader(importStream);
@@ -79,7 +83,7 @@ function ImportExport:BuildSerializedSelectedNodesFromImportString(importText, e
     local loadoutContent = self:ReadLoadoutContent(importStream, treeID);
 
     local serialized = "";
-    --- format: nodeID_entryID_spellID_rank
+    --- format: nodeID_entryID_spellIDOrSubTreeID_rank
     local vSep = ns.SERIALIZATION_VALUE_SEPARATOR;
     local nSep = ns.SERIALIZATION_NODE_SEPARATOR;
     local formatString = "%d" .. vSep .. "%d" .. vSep .. "%d" .. vSep .. "%d" .. nSep;
@@ -87,7 +91,7 @@ function ImportExport:BuildSerializedSelectedNodesFromImportString(importText, e
     local nodes = GetTreeNodes(treeID);
     for i, nodeID in pairs(nodes) do
         local indexInfo = loadoutContent[i];
-        if indexInfo.isNodeSelected then
+        if indexInfo.isNodePurchased then
             local nodeInfo = LibTT:GetNodeInfo(treeID, nodeID);
             local entryID = indexInfo.isChoiceNode and nodeInfo.entryIDs[indexInfo.choiceNodeSelection] or nodeInfo.entryIDs[1];
             local entryInfo = LibTT:GetEntryInfo(treeID, entryID);
@@ -102,25 +106,32 @@ function ImportExport:BuildSerializedSelectedNodesFromImportString(importText, e
                         indexInfo.isPartiallyRanked and indexInfo.partialRanksPurchased or nodeInfo.maxRanks
                     );
                 end
+            elseif entryInfo and entryInfo.subTreeID then
+                serialized = serialized .. string.format(
+                    formatString,
+                    nodeID,
+                    entryID,
+                    entryInfo.subTreeID,
+                    indexInfo.isPartiallyRanked and indexInfo.partialRanksPurchased or nodeInfo.maxRanks
+                );
             end
         end
     end
 
     local serializedLevelingOrder = nil;
-    local _, _, talentBuild, levelingBuild = importText:find(LEVELING_EXPORT_STRING_PATERN:format("(.*)", "(.*)"):gsub("%-", "%%-"));
-    if levelingBuild then
-        local levelingImportStream = ExportUtil.MakeImportDataStream(levelingBuild);
+    local _, _, _, levelingBuildString = importText:find(LEVELING_EXPORT_STRING_PATERN:format("(.*)", "(.*)"):gsub("%-", "%%-"));
+    if levelingBuildString then
+        local levelingImportStream = ExportUtil.MakeImportDataStream(levelingBuildString);
         local levelingHeaderValid, levelingSerializationVersion = self:ReadLevelingExportHeader(levelingImportStream);
         if levelingHeaderValid and levelingSerializationVersion == LEVELING_BUILD_SERIALIZATION_VERSION then
             local loadoutEntryInfo = self:ConvertToImportLoadoutEntryInfo(treeID, loadoutContent);
-            local levelingBuildEntries = self:ReadLevelingBuildContent(levelingImportStream, loadoutEntryInfo);
+            local levelingBuild = self:ReadLevelingBuildContent(levelingImportStream, loadoutEntryInfo);
 
             serializedLevelingOrder = "";
             --- format: level_nodeID_targetRank
             local lvlingFormatString = "%d" .. vSep .. "%d" .. vSep .. "%d" .. nSep;
-            for level = 10, ns.MAX_LEVEL do
-                local entry = levelingBuildEntries[level];
-                if entry then
+            for _, entries in pairs(levelingBuild.entries) do
+                for level, entry in pairs(entries) do
                     serializedLevelingOrder = serializedLevelingOrder .. string.format(
                         lvlingFormatString,
                         level,
@@ -129,20 +140,30 @@ function ImportExport:BuildSerializedSelectedNodesFromImportString(importText, e
                     );
                 end
             end
+            if levelingBuild.selectedSubTreeID then
+                local nodeID, _ = LibTT:GetSubTreeSelectionNodeIDAndEntryIDBySpecID(specIDFromString, levelingBuild.selectedSubTreeID);
+                serializedLevelingOrder = serializedLevelingOrder .. string.format(
+                    lvlingFormatString,
+                    HERO_SELECTION_NODE_LEVEL,
+                    nodeID,
+                    1
+                );
+            end
         end
     end
 
     return serialized, serializedLevelingOrder, classIDFromString, specIDFromString;
 end
 
+--- @private
 function ImportExport:ReadLoadoutHeader(importStream)
-    local headerBitWidth = self.bitWidthHeaderVersion + self.bitWidthSpecID + 128;
+    local headerBitWidth = BIT_WIDTH_HEADER_VERSION + BIT_WIDTH_SPEC_ID + 128;
     local importStreamTotalBits = importStream:GetNumberOfBits();
     if( importStreamTotalBits < headerBitWidth) then
         return false, 0, 0, 0;
     end
-    local serializationVersion = importStream:ExtractValue(self.bitWidthHeaderVersion);
-    local specID = importStream:ExtractValue(self.bitWidthSpecID);
+    local serializationVersion = importStream:ExtractValue(BIT_WIDTH_HEADER_VERSION);
+    local specID = importStream:ExtractValue(BIT_WIDTH_SPEC_ID);
 
     -- treeHash is a 128bit hash, passed as an array of 16, 8-bit values
     local treeHash = {};
@@ -152,17 +173,19 @@ function ImportExport:ReadLoadoutHeader(importStream)
     return true, serializationVersion, specID, treeHash;
 end
 
+--- @private
 function ImportExport:ReadLevelingExportHeader(importStream)
-    local headerBitWidth = self.levelingBitWidthVersion;
+    local headerBitWidth = LEVELING_BIT_WIDTH_VERSION;
     local importStreamTotalBits = importStream:GetNumberOfBits();
     if( importStreamTotalBits < headerBitWidth) then
         return false, 0;
     end
-    local serializationVersion = importStream:ExtractValue(self.levelingBitWidthVersion);
+    local serializationVersion = importStream:ExtractValue(LEVELING_BIT_WIDTH_VERSION);
 
     return true, serializationVersion;
 end
 
+--- @private
 function ImportExport:IsHashValid(treeHash, treeID)
     if not #treeHash == 16 then
         return false;
@@ -181,76 +204,93 @@ function ImportExport:IsHashValid(treeHash, treeID)
     return true;
 end
 
-
+--- @private
 function ImportExport:ReadLoadoutContent(importStream, treeID)
     local results = {};
 
     local treeNodes = GetTreeNodes(treeID);
-    for i, _ in ipairs(treeNodes) do
-        local nodeSelectedValue = importStream:ExtractValue(1)
+    for i, nodeID in ipairs(treeNodes) do
+        local nodeSelectedValue = importStream:ExtractValue(1);
         local isNodeSelected =  nodeSelectedValue == 1;
+        local isNodePurchased = false;
         local isPartiallyRanked = false;
         local partialRanksPurchased = 0;
         local isChoiceNode = false;
         local choiceNodeSelection = 0;
 
         if(isNodeSelected) then
-            local isPartiallyRankedValue = importStream:ExtractValue(1);
-            isPartiallyRanked = isPartiallyRankedValue == 1;
-            if(isPartiallyRanked) then
-                partialRanksPurchased = importStream:ExtractValue(self.bitWidthRanksPurchased);
-            end
-            local isChoiceNodeValue = importStream:ExtractValue(1);
-            isChoiceNode = isChoiceNodeValue == 1;
-            if(isChoiceNode) then
-                choiceNodeSelection = importStream:ExtractValue(2);
+            local nodePurchasedValue = importStream:ExtractValue(1);
+
+            isNodePurchased = nodePurchasedValue == 1;
+            if(isNodePurchased) then
+                local isPartiallyRankedValue = importStream:ExtractValue(1);
+                isPartiallyRanked = isPartiallyRankedValue == 1;
+                if(isPartiallyRanked) then
+                    partialRanksPurchased = importStream:ExtractValue(BIT_WIDTH_RANKS_PURCHASED);
+                end
+                local isChoiceNodeValue = importStream:ExtractValue(1);
+                isChoiceNode = isChoiceNodeValue == 1;
+                if(isChoiceNode) then
+                    choiceNodeSelection = importStream:ExtractValue(2);
+                end
             end
         end
 
         local result = {};
         result.isNodeSelected = isNodeSelected;
+        result.isNodeGranted = isNodeSelected and not isNodePurchased;
+        result.isNodePurchased = isNodePurchased;
         result.isPartiallyRanked = isPartiallyRanked;
         result.partialRanksPurchased = partialRanksPurchased;
         result.isChoiceNode = isChoiceNode;
         -- entry index is stored as zero-index, so convert back to lua index
         result.choiceNodeSelection = choiceNodeSelection + 1;
+        result.nodeID = nodeID;
         results[i] = result;
     end
 
     return results;
 end
 
---- @param loadoutEntryInfo TalentLoadoutManager_LoadoutEntryInfo[]
---- @return table<number, TalentLoadoutManager_LevelingBuildEntry> # [level] = entry
+--- @param loadoutEntryInfo TLM_LoadoutEntryInfo[]
+--- @return TLM_LevelingBuild
+--- @private
 function ImportExport:ReadLevelingBuildContent(importStream, loadoutEntryInfo)
     local results = {};
+    local selectedSubTreeID;
 
-    local purchasesByNodeID = {};
-    for level = 10, ns.MAX_LEVEL + 1 do
-        local success, orderIndex = pcall(importStream.ExtractValue, importStream, 7);
-        if not success or not orderIndex then break; end -- end of stream
+    for _, entry in ipairs(loadoutEntryInfo) do
+        local nodeInfo = LibTT:GetNodeInfo(entry.nodeID);
+        local ranksPurchased = entry.ranksPurchased;
+        for rank = 1, ranksPurchased do
+            local success, level = pcall(importStream.ExtractValue, importStream, LEVELING_BIT_WIDTH_DATA);
+            if not success or not level then -- end of stream
+                return { entries = results, selectedSubTreeID = selectedSubTreeID };
+            end
+            if level > 0 and not nodeInfo.isSubTreeSelection then
+                local result = {};
+                result.nodeID = entry.nodeID;
+                result.entryID = entry.isChoiceNode and entry.selectionEntryID;
+                result.targetRank = rank;
 
-        local entry = loadoutEntryInfo[orderIndex];
-        if entry then
-            purchasesByNodeID[entry.nodeID] = entry.ranksPurchased;
-            local result = {};
-            result.nodeID = entry.nodeID;
-            results[level] = result;
+                local tree = nodeInfo.subTreeID or (nodeInfo.isClassNode and 1 or 2);
+                results[tree] = results[tree] or {};
+                results[tree][level] = result;
+            elseif nodeInfo.isSubTreeSelection then
+                local entryInfo = LibTT:GetEntryInfo(entry.selectionEntryID);
+                if entryInfo and entryInfo.subTreeID then
+                    selectedSubTreeID = entryInfo.subTreeID;
+                end
+            end
         end
     end
-    for level = ns.MAX_LEVEL, 9, -1 do
-        local result = results[level];
-        if result then
-            result.targetRank = purchasesByNodeID[result.nodeID];
-            purchasesByNodeID[result.nodeID] = purchasesByNodeID[result.nodeID] - 1;
-        end
-    end
 
-    return results;
+    return { entries = results, selectedSubTreeID = selectedSubTreeID };
 end
 
 --- converts from compact bit-packing format to LoadoutEntryInfo format to pass to ImportLoadout API
---- @return TalentLoadoutManager_LoadoutEntryInfo[]
+--- @return TLM_LoadoutEntryInfo[]
+--- @private
 function ImportExport:ConvertToImportLoadoutEntryInfo(treeID, loadoutContent)
     local results = {};
     local treeNodes = C_Traits.GetTreeNodes(treeID);
@@ -259,7 +299,7 @@ function ImportExport:ConvertToImportLoadoutEntryInfo(treeID, loadoutContent)
 
         local indexInfo = loadoutContent[i];
 
-        if (indexInfo.isNodeSelected) then
+        if (indexInfo.isNodeSelected and not indexInfo.isNodeGranted) then
             local treeNode = LibTT:GetNodeInfo(treeNodeID);
             local isChoiceNode = treeNode.type == Enum.TraitNodeType.Selection or treeNode.type == Enum.TraitNodeType.SubTreeSelection;
             local choiceNodeSelection = indexInfo.isChoiceNode and indexInfo.choiceNodeSelection or nil;
@@ -268,7 +308,7 @@ function ImportExport:ConvertToImportLoadoutEntryInfo(treeID, loadoutContent)
                 print(string.format('Import string is corrupt, node type mismatch at nodeID %d. First option will be selected.', treeNodeID));
                 choiceNodeSelection = 1;
             end
-            --- @type TalentLoadoutManager_LoadoutEntryInfo
+            --- @type TLM_LoadoutEntryInfo
             local result = {
                 nodeID = treeNode.ID,
                 ranksPurchased = indexInfo.isPartiallyRanked and indexInfo.partialRanksPurchased or treeNode.maxRanks,
@@ -284,6 +324,7 @@ function ImportExport:ConvertToImportLoadoutEntryInfo(treeID, loadoutContent)
     return results;
 end
 
+--- @public
 function ImportExport:TryExportBlizzardLoadoutToString(configID, specID)
     local loadoutString = C_Traits.GenerateImportString(configID);
     if not loadoutString or '' == loadoutString then
@@ -293,18 +334,18 @@ function ImportExport:TryExportBlizzardLoadoutToString(configID, specID)
     local exportStream = ExportUtil.MakeExportDataStream();
     local importStream = ExportUtil.MakeImportDataStream(loadoutString);
 
-    if importStream:ExtractValue(self.bitWidthHeaderVersion) ~= 1 then
-        return nil; -- only version 1 is supported
+    if importStream:ExtractValue(BIT_WIDTH_HEADER_VERSION) ~= LOADOUT_SERIALIZATION_VERSION then
+        return nil;
     end
 
-    local headerSpecID = importStream:ExtractValue(self.bitWidthSpecID);
+    local headerSpecID = importStream:ExtractValue(BIT_WIDTH_SPEC_ID);
     if headerSpecID == specID then
         return loadoutString; -- no update needed
     end
 
-    exportStream:AddValue(self.bitWidthHeaderVersion, 1);
-    exportStream:AddValue(self.bitWidthSpecID, specID);
-    local remainingBits = importStream:GetNumberOfBits() - self.bitWidthHeaderVersion - self.bitWidthSpecID;
+    exportStream:AddValue(BIT_WIDTH_HEADER_VERSION, LOADOUT_SERIALIZATION_VERSION);
+    exportStream:AddValue(BIT_WIDTH_SPEC_ID, specID);
+    local remainingBits = importStream:GetNumberOfBits() - BIT_WIDTH_HEADER_VERSION - BIT_WIDTH_SPEC_ID;
     -- copy the remaining bits in batches of 16
     while remainingBits > 0 do
         local bitsToCopy = math.min(remainingBits, 16);
@@ -317,17 +358,16 @@ end
 
 --- @param classID number
 --- @param specID number
---- @param deserializedLoadout table<number, TalentLoadoutManager_DeserializedLoadout> [nodeID] = deserializedNode
---- @param levelingBuild nil|table<number, TalentLoadoutManager_LevelingBuildEntry> # [level] = entry
+--- @param deserializedLoadout table<number, TLM_DeserializedLoadout> [nodeID] = deserializedNode
+--- @param levelingBuild nil|TLM_LevelingBuildEntry_withLevel[]
+--- @public
 function ImportExport:ExportLoadoutToString(classID, specID, deserializedLoadout, levelingBuild)
-    local LOADOUT_SERIALIZATION_VERSION = C_Traits.GetLoadoutSerializationVersion and C_Traits.GetLoadoutSerializationVersion() or 1;
-
     local exportStream = ExportUtil.MakeExportDataStream();
     local treeID = LibTT:GetClassTreeId(classID);
 
     -- write header
-    exportStream:AddValue(self.bitWidthHeaderVersion, LOADOUT_SERIALIZATION_VERSION);
-    exportStream:AddValue(self.bitWidthSpecID, specID);
+    exportStream:AddValue(BIT_WIDTH_HEADER_VERSION, LOADOUT_SERIALIZATION_VERSION);
+    exportStream:AddValue(BIT_WIDTH_SPEC_ID, specID);
     -- treeHash is a 128bit hash, passed as an array of 16, 8-bit values
     -- empty tree hash will disable validation on import
     exportStream:AddValue(8 * 16, 0);
@@ -340,23 +380,25 @@ function ImportExport:ExportLoadoutToString(classID, specID, deserializedLoadout
     end
 
     local levelingExportStream = ExportUtil.MakeExportDataStream();
-    levelingExportStream:AddValue(self.levelingBitWidthVersion, LEVELING_BUILD_SERIALIZATION_VERSION);
+    levelingExportStream:AddValue(LEVELING_BIT_WIDTH_VERSION, LEVELING_BUILD_SERIALIZATION_VERSION);
     self:WriteLevelingBuildContent(levelingExportStream, treeID, cleanedDeserializedLoadout, levelingBuild);
 
     return LEVELING_EXPORT_STRING_PATERN:format(loadoutString, levelingExportStream:GetExportString());
 end
 
---- @param deserialized table<number, TalentLoadoutManager_DeserializedLoadout> # [nodeID] = deserializedNode
+--- @param deserialized table<number, TLM_DeserializedLoadout> # [nodeID] = deserializedNode
 --- @param treeID number
 --- @param classID number
 --- @param specID number
---- @return table<number, TalentLoadoutManager_DeserializedLoadout> # [nodeID] = deserializedNode; cleaned up node info
+--- @return table<number, TLM_DeserializedLoadout> # [nodeID] = deserializedNode; cleaned up node info
+--- @private
 function ImportExport:WriteLoadoutContent(exportStream, deserialized, treeID, classID, specID)
     --- @type TalentLoadoutManager
     local TLM = ns.TLM;
     local treeNodes = GetTreeNodes(treeID);
 
     local deserializedByNodeID = {};
+    -- clean up the node info, in case the nodeID/entryID has changed
     for _, info in pairs(deserialized) do
         local nodeInfoExists = false;
         local nodeInfo = LibTT:GetNodeInfo(info.nodeID)
@@ -379,6 +421,7 @@ function ImportExport:WriteLoadoutContent(exportStream, deserialized, treeID, cl
 
         local nodeID, entryID = info.nodeID, info.entryID;
         if not nodeInfoExists then
+            ---@diagnostic disable-next-line: cast-local-type
             nodeID, entryID = TLM:GetNodeAndEntryBySpellID(info.spellID, classID, specID);
         end
         if nodeID then
@@ -388,14 +431,19 @@ function ImportExport:WriteLoadoutContent(exportStream, deserialized, treeID, cl
     end
 
     for _, nodeID in pairs(treeNodes) do
+        local isNodeGranted = LibTT:IsNodeGrantedForSpec(specID, nodeID);
+        --- @type TLM_DeserializedLoadout
         local info = deserializedByNodeID[nodeID];
-        exportStream:AddValue(1, info and 1 or 0);
+        exportStream:AddValue(1, (info or isNodeGranted) and 1 or 0);
+        if info or isNodeGranted then -- granted or purchased
+            exportStream:AddValue(1, info and 1 or 0); -- isPurchased
+        end
         if info then
             local nodeInfo = LibTT:GetNodeInfo(treeID, nodeID);
             local isPartiallyRanked = nodeInfo and nodeInfo.maxRanks ~= info.rank
             exportStream:AddValue(1, isPartiallyRanked and 1 or 0);
             if isPartiallyRanked then
-                exportStream:AddValue(self.bitWidthRanksPurchased, info.rank);
+                exportStream:AddValue(BIT_WIDTH_RANKS_PURCHASED, info.rank);
             end
 
             local isChoiceNode = nodeInfo and (nodeInfo.type == Enum.TraitNodeType.Selection or nodeInfo.type == Enum.TraitNodeType.SubTreeSelection);
@@ -418,33 +466,30 @@ function ImportExport:WriteLoadoutContent(exportStream, deserialized, treeID, cl
 end
 
 --- @param treeID number
---- @param deserialized table<number, TalentLoadoutManager_DeserializedLoadout> # [nodeID] = deserializedNode
---- @param levelingBuild table<number, TalentLoadoutManager_LevelingBuildEntry> # [level] = entry
+--- @param deserialized table<number, TLM_DeserializedLoadout> # [nodeID] = deserializedNode
+--- @param levelingBuild TLM_LevelingBuildEntry_withLevel[]
+--- @private
 function ImportExport:WriteLevelingBuildContent(exportStream, treeID, deserialized, levelingBuild)
-    local purchasedNodesOrder = {};
+    local levelingMap = {};
+    local keyFormat = '%d_%d';
+    for _, entry in pairs(levelingBuild) do
+        local key = keyFormat:format(entry.nodeID, entry.targetRank);
+        levelingMap[key] = entry.level;
+    end
+
     local treeNodes = GetTreeNodes(treeID);
-    local i = 0;
     for _, nodeID in ipairs(treeNodes) do
         local info = deserialized[nodeID];
         if info and info.rank > 0 then
-            i = i + 1;
-            purchasedNodesOrder[nodeID] = i;
-        end
-    end
-    local numberOfLevelingEntries = 0;
-    for level = 10, ns.MAX_LEVEL do
-        local entry = levelingBuild[level];
-        if entry then
-            numberOfLevelingEntries = numberOfLevelingEntries + 1;
-        end
-    end
-
-    for level = 10, ns.MAX_LEVEL do
-        local entry = levelingBuild[level];
-        exportStream:AddValue(7, entry and purchasedNodesOrder[entry.nodeID] or 0);
-        numberOfLevelingEntries = numberOfLevelingEntries - (entry and 1 or 0);
-        if 0 == numberOfLevelingEntries then
-            break;
+            local nodeInfo = LibTT:GetNodeInfo(treeID, nodeID);
+            if nodeInfo.isSubTreeSelection then
+                exportStream:AddValue(LEVELING_BIT_WIDTH_DATA, HERO_SELECTION_NODE_LEVEL);
+            else
+                for rank = 1, info.rank do
+                    local key = keyFormat:format(nodeID, rank);
+                    exportStream:AddValue(LEVELING_BIT_WIDTH_DATA, levelingMap[key] or 0);
+                end
+            end
         end
     end
 end

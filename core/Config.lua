@@ -72,7 +72,7 @@ function Config:GetOptions()
                 order = orderCount(),
                 type = "description",
                 name =
-[[TalentLoadoutManager supports importing leveling builds, through any import string or ingame link that includes leveling info, or through Icy Veins calculator links.
+[[TalentLoadoutManager supports importing leveling builds, through any import string or ingame link that includes leveling info, or through IcyVeins calculator links.
 You can create a leveling build yourself, either using the IcyVeins talent calculator, or ingame, using the Talent Tree Viewer addon
 ]],
             },

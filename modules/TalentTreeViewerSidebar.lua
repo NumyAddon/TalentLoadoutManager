@@ -6,7 +6,7 @@ local TLM = ns.TLM;
 --- @type TalentLoadoutManagerAPI_GlobalAPI
 local GlobalAPI = TalentLoadoutManagerAPI.GlobalAPI;
 
---- @class TalentLoadoutManager_TTVSideBarModule: TalentLoadoutManager_SideBarMixin, AceModule, AceHook-3.0
+--- @class TLM_TTVSideBarModule: TLM_SideBarMixin, AceModule, AceHook-3.0
 local Module = TLM:NewModule("TTVSideBar", "AceHook-3.0");
 TLM.TTVSideBarModule = Module;
 
@@ -21,15 +21,16 @@ Module.ShowLoadAndApply = false;
 Module.ShowShowInTTV = false;
 
 function Module:OnEnable()
-    EventUtil.ContinueOnAddOnLoaded("TalentTreeViewer", function()
+    EventUtil.ContinueOnAddOnLoaded(TalentViewerLoader and TalentViewerLoader:GetLodAddonName() or 'TalentTreeViewer', function()
         self:SetupHook();
     end);
 end
 
---- @return TalentViewer
+--- @return TalentViewer|TalentViewerTWW
 function Module:GetTalentTreeViewer()
-    if not TalentViewer then
-        C_AddOns.LoadAddOn("TalentTreeViewer")
+    if TalentViewerLoader then return TalentViewerLoader:GetTalentViewer(); end
+    if not TalentViewer then --- @todo delete in TWW
+        C_AddOns.LoadAddOn(TalentViewerLoader and TalentViewerLoader:GetLodAddonName() or 'TalentTreeViewer')
         if not TalentViewer then
             error("TalentTreeViewer failed to load")
         end
@@ -37,7 +38,7 @@ function Module:GetTalentTreeViewer()
     return TalentViewer;
 end
 
----@return TalentViewerUIMixin
+---@return TalentViewerUIMixin|TalentViewerUIMixinTWW
 function Module:GetTalentsTab()
     return self:GetTalentTreeViewer():GetTalentFrame();
 end

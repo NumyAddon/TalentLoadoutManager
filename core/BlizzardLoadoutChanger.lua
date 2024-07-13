@@ -1,11 +1,13 @@
 local addonName, ns = ...;
 
---- @type TalentLoadoutManager
+--- @class TalentLoadoutManager
 local TLM = ns.TLM;
 
+--- @class TLM_BlizzardLoadoutChanger: AceModule, AceEvent-3.0
 local Module = TLM:NewModule("BlizzardLoadoutChanger", "AceEvent-3.0");
 TLM.BlizzardLoadoutChanger = Module;
 
+local GetStagedChanges = C_Traits.GetStagedChanges or C_Traits.GetStagedPurchases;
 local starterConfigID = Constants.TraitConsts.STARTER_BUILD_TRAIT_CONFIG_ID;
 
 function Module:OnInitialize()
@@ -23,10 +25,16 @@ function Module:UpdateCurrentConfigID()
         or (C_ClassTalents.GetStarterBuildActive() and starterConfigID);
 end
 
+--- @return FRAME?
+function Module:GetTalentFrame()
+    return (ClassTalentFrame and ClassTalentFrame.TalentsTab) or (PlayerSpellsFrame and PlayerSpellsFrame.TalentsFrame);
+end
+
 function Module:TryRefreshTalentUI()
-    if not InCombatLockdown() and ClassTalentFrame and ClassTalentFrame.TalentsTab and ClassTalentFrame.TalentsTab:IsVisible() then
-        ClassTalentFrame.TalentsTab:Hide();
-        ClassTalentFrame.TalentsTab:Show();
+    local talentsTab = self:GetTalentFrame();
+    if not InCombatLockdown() and talentsTab and talentsTab:IsVisible() then
+        talentsTab:Hide();
+        talentsTab:Show();
     end
 end
 
@@ -40,7 +48,8 @@ function Module:UpdateLastSelectedSavedConfigID(configID)
 
     -- this horrible workaround should not be needed once blizzard actually fires SELECTED_LOADOUT_CHANGED event
     -- or you know.. realizes that it's possible for addons to change the loadout, but we can't do that without tainting all the things
-    local dropdown = ClassTalentFrame and ClassTalentFrame.TalentsTab and ClassTalentFrame.TalentsTab.LoadoutDropDown;
+    local talentsTab = self:GetTalentFrame();
+    local dropdown = talentsTab.LoadoutDropDown or talentsTab.LoadSystem;
     local _ = dropdown and dropdown.SetSelectionID and dropdown:SetSelectionID(configID);
 
     if true then return end -- disable this for now, needs more testing
@@ -136,14 +145,13 @@ function Module:SelectLoadout(configID, autoApply, onAfterChangeCallback)
             RunNextFrame(function() securecall(onAfterChangeCallback); end);
         end
     elseif loadResult == Enum.LoadConfigResult.LoadInProgress then
-        --- @type Frame|nil
-        local talentsTab = ClassTalentFrame and ClassTalentFrame.TalentsTab; ---@diagnostic disable-line: undefined-global
+        local talentsTab = self:GetTalentFrame();
         local talentsTabIsVisible = talentsTab and talentsTab.IsVisible and talentsTab:IsVisible();
         if talentsTab and talentsTabIsVisible then
             local activeConfigID = C_ClassTalents.GetActiveConfigID();
-            local stagedNodes = activeConfigID and C_Traits.GetStagedPurchases(activeConfigID);
+            local stagedNodes = activeConfigID and GetStagedChanges(activeConfigID);
             if stagedNodes and next(stagedNodes) then
-                talentsTab.stagedPurchaseNodes = C_Traits.GetStagedPurchases(activeConfigID);
+                talentsTab.stagedPurchaseNodes = stagedNodes;
                 talentsTab:SetCommitVisualsActive(true, TalentFrameBaseMixin.VisualsUpdateReasons.CommitOngoing, true);
             end
         end

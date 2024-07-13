@@ -1,8 +1,10 @@
 local name, ns = ...
 
---- @class TalentLoadoutManager_IcyVeinsImport
+--- @class TLM_IcyVeinsImport
 local IcyVeinsImport = {};
 ns.IcyVeinsImport = IcyVeinsImport;
+
+local isDF = select(4, GetBuildInfo()) < 110000;
 
 local skillMappings = tInvert{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Ă', 'ă', 'Â', 'â', 'Î', 'î', 'Ș', 'ș', 'Ț', 'ț', 'ë', 'é', 'ê', 'ï', 'ô', 'β', 'Γ', 'γ', 'Δ', 'δ', 'ε', 'ζ'};
 
@@ -11,6 +13,7 @@ local LibTT = LibStub('LibTalentTree-1.0');
 
 --- @param text string
 --- @return boolean
+--- @public
 function IcyVeinsImport:IsTalentUrl(text)
     -- example URL https://www.icy-veins.com/wow/dragonflight-talent-calculator#6--250$foo+bar*
     return not not text:match('^https?://www%.icy%-veins%.com/wow/dragonflight%-talent%-calculator%#%d+%-%-%d+%$[^+]-%+[^*]-%*');
@@ -23,7 +26,11 @@ end
 --- @return string|nil # error message on failure, serializedLevelingOrder (if any) on success
 --- @return number|nil # actual classID on success
 --- @return number|nil # actual specID on success
+--- @public
 function IcyVeinsImport:BuildSerializedSelectedNodesFromUrl(fullUrl, expectedClassID, expectedSpecID)
+    if not isDF then
+        return false, 'IcyVeins import is not supported yet for TWW';
+    end
     if not self:IsTalentUrl(fullUrl) then
         return false, 'Invalid URL';
     end
@@ -96,7 +103,8 @@ end
 --- @param url string
 --- @return nil|number # classID
 --- @return nil|number # specID
---- @return nil|table<number, TalentLoadoutManager_LevelingBuildEntry_withEntry> # [level] = entry
+--- @return nil|table<number, TLM_LevelingBuildEntry_withEntry> # [level] = entry
+--- @private
 function IcyVeinsImport:ParseUrl(url)
     local dataSection = url:match('#(.*)');
 
@@ -119,7 +127,8 @@ function IcyVeinsImport:ParseUrl(url)
     return classID, specID, levelingOrder;
 end
 
---- @param levelingOrder table<number, TalentLoadoutManager_LevelingBuildEntry_withEntry> # [level] = entry
+--- @param levelingOrder table<number, TLM_LevelingBuildEntry_withEntry> # [level] = entry
+--- @private
 function IcyVeinsImport:ParseDataSegment(startingLevel, dataSegment, levelingOrder, nodes)
     local splitDataSegment = {};
     for char in string.gmatch(dataSegment, '.') do
@@ -153,7 +162,7 @@ function IcyVeinsImport:ParseDataSegment(startingLevel, dataSegment, levelingOrd
                 local entry = (nodeInfo.type == Enum.TraitNodeType.Selection or nodeInfo.type == Enum.TraitNodeType.SubTreeSelection) and nodeInfo.entryIDs and nodeInfo.entryIDs[entryIndex] or nil;
                 rankByNodeID[nodeID] = (rankByNodeID[nodeID] or 0) + 1;
 
-                --- @type TalentLoadoutManager_LevelingBuildEntry_withEntry
+                --- @type TLM_LevelingBuildEntry_withEntry
                 levelingOrder[level] = {
                     nodeID = nodeID,
                     entryID = entry,
@@ -164,7 +173,9 @@ function IcyVeinsImport:ParseDataSegment(startingLevel, dataSegment, levelingOrd
     end
 end
 
+--- @private
 IcyVeinsImport.classAndSpecNodeCache = {};
+--- @private
 function IcyVeinsImport:GetClassAndSpecNodeIDs(specID, treeID)
     if self.classAndSpecNodeCache[specID] then
         return unpack(self.classAndSpecNodeCache[specID]);

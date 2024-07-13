@@ -8,9 +8,9 @@ TLM._ns = ns;
 _G.TalentLoadoutManager = TLM;
 
 ns.SERIALIZATION_NODE_SEPARATOR = "\n";
---- format: nodeID_entryID_spellID_rank
+--- format: nodeID_entryID_spellIDOrSubTreeID_rank
 ns.SERIALIZATION_VALUE_SEPARATOR = "_";
-ns.MAX_LEVEL = 70;
+ns.MAX_LEVEL = 80;
 local SERIALIZATION_NODE_SEPARATOR = ns.SERIALIZATION_NODE_SEPARATOR;
 local SERIALIZATION_VALUE_SEPARATOR = ns.SERIALIZATION_VALUE_SEPARATOR;
 
@@ -18,10 +18,10 @@ local SERIALIZATION_VALUE_SEPARATOR = ns.SERIALIZATION_VALUE_SEPARATOR;
 if not _G.TLM then _G.TLM = TLM; end
 --@end-debug@
 
---- @type TalentLoadoutManager_ImportExport
+--- @type TLM_ImportExportV1|TLM_ImportExportV2
 local ImportExport = ns.ImportExport;
 
---- @type TalentLoadoutManager_IcyVeinsImport
+--- @type TLM_IcyVeinsImport
 local IcyVeinsImport = ns.IcyVeinsImport;
 
 local LibTT = LibStub("LibTalentTree-1.0");
@@ -271,11 +271,21 @@ function TLM:GetActiveBlizzardLoadoutConfigID()
     if not self.playerSpecID then return nil; end
 
     local lastSelected = C_ClassTalents.GetLastSelectedSavedConfigID(self.playerSpecID);
-    local selectionID = ClassTalentFrame
-        and ClassTalentFrame.TalentsTab
-        and ClassTalentFrame.TalentsTab.LoadoutDropDown
-        and ClassTalentFrame.TalentsTab.LoadoutDropDown.GetSelectionID
-        and ClassTalentFrame.TalentsTab.LoadoutDropDown:GetSelectionID();
+    local selectionID =
+        (
+            ClassTalentFrame
+            and ClassTalentFrame.TalentsTab
+            and ClassTalentFrame.TalentsTab.LoadoutDropDown
+            and ClassTalentFrame.TalentsTab.LoadoutDropDown.GetSelectionID
+            and ClassTalentFrame.TalentsTab.LoadoutDropDown:GetSelectionID()
+        )
+        or (
+            PlayerSpellsFrame
+            and PlayerSpellsFrame.TalentsFrame
+            and PlayerSpellsFrame.TalentsFrame.LoadSystem
+            and PlayerSpellsFrame.TalentsFrame.LoadSystem.GetSelectionID
+            and PlayerSpellsFrame.TalentsFrame.LoadSystem:GetSelectionID()
+        );
 
     return selectionID or lastSelected or C_ClassTalents.GetActiveConfigID() or nil;
 end
@@ -344,6 +354,11 @@ function TLM:GetNodeAndEntryBySpellID(spellID, classID, specID)
                                 entryID = entryID,
                             };
                         end
+                    elseif entryInfo and entryInfo.subTreeID then
+                        self.cache.spellNodeMap[classID][specID][entryInfo.subTreeID] = {
+                            nodeID = nodeID,
+                            entryID = entryID,
+                        };
                     end
                 end
             end
@@ -487,7 +502,7 @@ function TLM:SerializeLoadout(configID, specID)
         return (self:BuildSerializedSelectedNodesFromImportString(importString));
     end
     local serialized = "";
-    --- format: nodeID_entryID_spellID_rank
+    --- format: nodeID_entryID_spellIDOrSubTreeID_rank
     local vSep = SERIALIZATION_VALUE_SEPARATOR;
     local nSep = SERIALIZATION_NODE_SEPARATOR;
     local formatString = "%d" .. vSep .. "%d" .. vSep .. "%d" .. vSep .. "%d" .. nSep;
@@ -510,6 +525,14 @@ function TLM:SerializeLoadout(configID, specID)
                         nodeInfo.ranksPurchased
                     );
                 end
+            elseif entryInfo and entryInfo.subTreeID then
+                serialized = serialized .. string.format(
+                    formatString,
+                    nodeID,
+                    entryID,
+                    entryInfo.subTreeID,
+                    nodeInfo.ranksPurchased
+                );
             end
         end
     end
@@ -518,7 +541,7 @@ function TLM:SerializeLoadout(configID, specID)
 end
 
 --- @param serialized string
---- @return table<number, TalentLoadoutManager_DeserializedLoadout> [nodeID] = deserializedNode
+--- @return table<number, TLM_DeserializedLoadout> [nodeID] = deserializedNode
 function TLM:DeserializeLoadout(serialized)
     if self.cache.deserializationCache[serialized] then
         return CopyTable(self.cache.deserializationCache[serialized]);
@@ -528,8 +551,9 @@ function TLM:DeserializeLoadout(serialized)
     local nSep = SERIALIZATION_NODE_SEPARATOR;
 
     for node in string.gmatch(serialized, "([^" .. nSep .. "]+)") do
-        --- format: nodeID_entryID_spellID_rank
+        --- format: nodeID_entryID_spellIDOrSubTreeID_rank
         local nodeID, entryID, spellID, rank = string.split(vSep, node);
+        --- @type TLM_DeserializedLoadout
         loadout[tonumber(nodeID)] = {
             nodeID = tonumber(nodeID),
             entryID = tonumber(entryID),
@@ -544,7 +568,7 @@ function TLM:DeserializeLoadout(serialized)
 end
 
 --- @param serialized string
---- @return table<number, TalentLoadoutManager_LevelingBuildEntry> # [level] = levelingBuildEntry
+--- @return TLM_LevelingBuildEntry_withLevel[] # an unordered list of entries
 function TLM:DeserializeLevelingOrder(serialized)
     if self.cache.deserializationLevelingCache[serialized] then
         return CopyTable(self.cache.deserializationLevelingCache[serialized]);
@@ -552,12 +576,15 @@ function TLM:DeserializeLevelingOrder(serialized)
     local loadout = {};
     local vSep = SERIALIZATION_VALUE_SEPARATOR;
     local nSep = SERIALIZATION_NODE_SEPARATOR;
+    local i = 0;
 
     for node in string.gmatch(serialized, "([^" .. nSep .. "]+)") do
         --- format: level_nodeID_targetRank
         local level, nodeID, targetRank = string.split(vSep, node);
-        --- @class TalentLoadoutManager_LevelingBuildEntry
-        loadout[tonumber(level)] = {
+        i = i + 1;
+        --- @type TLM_LevelingBuildEntry_withLevel
+        loadout[i] = {
+            level = tonumber(level), ---@diagnostic disable-line: assign-type-mismatch
             nodeID = tonumber(nodeID), ---@diagnostic disable-line: assign-type-mismatch
             targetRank = tonumber(targetRank), ---@diagnostic disable-line: assign-type-mismatch
         };
@@ -583,8 +610,8 @@ function TLM:GetActiveLoadoutID()
     return activeLoadoutConfigID;
 end
 
---- @param loadoutInfo TalentLoadoutManager_LoadoutInfo
---- @return table<number, TalentLoadoutManager_LoadoutEntryInfo> # [nodeID] = entryInfo
+--- @param loadoutInfo TLM_LoadoutInfo
+--- @return table<number, TLM_LoadoutEntryInfo> # [nodeID] = entryInfo
 --- @return number # total number of entries (including those that could not be matched)
 --- @return number # number of entries that could not be matched
 function TLM:LoadoutInfoToEntryInfo(loadoutInfo)
@@ -613,6 +640,11 @@ function TLM:LoadoutInfoToEntryInfo(loadoutInfo)
                         loadoutNodeInfo.entryID = entryID;
                         isChoiceNode = Enum.TraitNodeType.Selection == nodeInfo.type or Enum.TraitNodeType.SubTreeSelection == nodeInfo.type;
                         break;
+                    elseif nodeEntryInfo and nodeEntryInfo.subTreeID == loadoutNodeInfo.spellID then
+                        nodeInfoExists = true;
+                        loadoutNodeInfo.entryID = entryID;
+                        isChoiceNode = Enum.TraitNodeType.Selection == nodeInfo.type or Enum.TraitNodeType.SubTreeSelection == nodeInfo.type;
+                        break;
                     end
                 end
             end
@@ -624,7 +656,7 @@ function TLM:LoadoutInfoToEntryInfo(loadoutInfo)
             isChoiceNode = self:IsChoiceNode(nodeID);
         end
         if nodeID and entryID then
-            --- @type TalentLoadoutManager_LoadoutEntryInfo
+            --- @type TLM_LoadoutEntryInfo
             entryInfo[nodeID] = {
                 selectionEntryID = entryID,
                 nodeID = nodeID,
@@ -641,7 +673,7 @@ end
 
 --- @param loadoutID string|number
 --- @param rawData boolean|nil - if true, the raw saved variable information is returned
---- @return TalentLoadoutManager_LoadoutDisplayInfo|nil
+--- @return TLM_LoadoutDisplayInfo|nil
 function TLM:GetLoadoutByID(loadoutID, rawData)
     local displayInfo = self.cache.loadoutByID[loadoutID];
     if rawData then return displayInfo; end
@@ -654,7 +686,7 @@ function TLM:GetLoadoutByID(loadoutID, rawData)
     return displayInfo;
 end
 
---- @return TalentLoadoutManager_LoadoutDisplayInfo[] - list of all loadouts, isActive still refers to the current player only
+--- @return TLM_LoadoutDisplayInfo[] - list of all loadouts, isActive still refers to the current player only
 function TLM:GetAllLoadouts()
     local loadouts = {};
     local activeLoadoutID = self:GetActiveLoadoutID();
@@ -667,7 +699,7 @@ function TLM:GetAllLoadouts()
     return loadouts;
 end
 
---- @return TalentLoadoutManager_LoadoutDisplayInfo[] - list of loadouts
+--- @return TLM_LoadoutDisplayInfo[] - list of loadouts
 function TLM:GetLoadouts(classIDOrNil, specIDOrNil)
     local loadouts = {}
     local classID = tonumber(classIDOrNil) or self.playerClassID;
@@ -690,7 +722,7 @@ function TLM:GetLoadouts(classIDOrNil, specIDOrNil)
     return loadouts;
 end
 
---- @param loadoutInfo TalentLoadoutManager_LoadoutInfo
+--- @param loadoutInfo TLM_LoadoutInfo
 function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
     --------------------------------------------------------------------------------------------
     --- If autoApply is false, simply reset and load the custom loadout.
@@ -736,6 +768,7 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
     do
         local ok, configInfo = pcall(C_Traits.GetConfigInfo, parentConfigID);
         if not ok or not configInfo then
+            self:SetParentLoadout(loadoutInfo.id, nil);
             parentConfigID = self:GetParentMappingForLoadout(loadoutInfo, specID)[0];
             if parentConfigID then
                 ok, configInfo = pcall(C_Traits.GetConfigInfo, parentConfigID);
@@ -815,14 +848,20 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
 end
 
 --- @param configID number
---- @param loadoutEntryInfo table<number, TalentLoadoutManager_LoadoutEntryInfo> # [nodeID] = entryInfo
---- @param levelingOrder table<number, TalentLoadoutManager_LevelingBuildEntry>|nil - [level] = entry
+--- @param loadoutEntryInfo table<number, TLM_LoadoutEntryInfo> # [nodeID] = entryInfo
+--- @param levelingOrder TLM_LevelingBuildEntry_withLevel[]|nil # unordered list of entries
 --- @return number number of removed entries (due to successful purchases)
 function TLM:ResetAndPurchaseLoadoutEntries(configID, loadoutEntryInfo, levelingOrder)
     local totalEntriesRemoved = 0;
     C_Traits.ResetTree(configID, self:GetTreeID());
+    local entriesByLevel = {};
+    for _, entry in pairs(levelingOrder or {}) do
+        entriesByLevel[entry.level] = entriesByLevel[entry.level] or {};
+        table.insert(entriesByLevel[entry.level], entry);
+    end
+
     while (true) do
-        local removed = self:PurchaseLoadoutEntryInfo(self:GetTreeID(), configID, loadoutEntryInfo, levelingOrder);
+        local removed = self:PurchaseLoadoutEntryInfo(self:GetTreeID(), configID, loadoutEntryInfo, entriesByLevel);
         if (0 == removed) then
             break;
         end
@@ -834,48 +873,52 @@ end
 
 --- @param treeID number
 --- @param configID number
---- @param loadoutEntryInfo table<number, TalentLoadoutManager_LoadoutEntryInfo> # [nodeID] = entryInfo
---- @param levelingOrder table<number, TalentLoadoutManager_LevelingBuildEntry>|nil - [level] = entry
+--- @param loadoutEntryInfo table<number, TLM_LoadoutEntryInfo> # [nodeID] = entryInfo
+--- @param entriesByLevel table<number, TLM_LevelingBuildEntry_withLevel[]>|nil # [level] = entries
 --- @return number number of removed entries (due to successful purchases)
-function TLM:PurchaseLoadoutEntryInfo(treeID, configID, loadoutEntryInfo, levelingOrder)
+function TLM:PurchaseLoadoutEntryInfo(treeID, configID, loadoutEntryInfo, entriesByLevel)
     local removed = 0;
     local orderedNodes = self:GetTreeNodes(treeID, true);
 
-    if levelingOrder then
-        --- @type table<number, TalentLoadoutManager_LoadoutEntryInfo>
+    if entriesByLevel and next(entriesByLevel) then
+        --- @type table<number, TLM_LoadoutEntryInfo>
         local notMentionedInLevelingOrder = CopyTable(loadoutEntryInfo);
         local nonZeroStartingRank = {};
         for level = 10, ns.MAX_LEVEL do
-            local entry = levelingOrder[level];
-            if entry and notMentionedInLevelingOrder[entry.nodeID] and not nonZeroStartingRank[entry.nodeID] then
-                if entry.targetRank > 1 then
-                    nonZeroStartingRank[entry.nodeID] = true;
-                    notMentionedInLevelingOrder[entry.nodeID].ranksPurchased = entry.targetRank - 1;
-                else
-                    notMentionedInLevelingOrder[entry.nodeID] = nil;
+            local entries = entriesByLevel[level] or {};
+            for _, entry in pairs(entries) do
+                if notMentionedInLevelingOrder[entry.nodeID] and not nonZeroStartingRank[entry.nodeID] then
+                    if entry.targetRank > 1 then
+                        nonZeroStartingRank[entry.nodeID] = true;
+                        notMentionedInLevelingOrder[entry.nodeID].ranksPurchased = entry.targetRank - 1;
+                    else
+                        notMentionedInLevelingOrder[entry.nodeID] = nil;
+                    end
                 end
             end
         end
         -- first purchase anything not mentioned in the leveling order, basically a baseline loadout
-        removed = removed + self:PurchaseOrderedEntries(orderedNodes, configID, notMentionedInLevelingOrder);
+        removed = removed + (next(notMentionedInLevelingOrder) and self:PurchaseOrderedEntries(orderedNodes, configID, notMentionedInLevelingOrder) or 0);
 
         for level = 10, ns.MAX_LEVEL do
-            local entry = levelingOrder[level];
-            if entry and loadoutEntryInfo[entry.nodeID] then
-                local nodeEntry = loadoutEntryInfo[entry.nodeID];
-                local nodeInfo = C_Traits.GetNodeInfo(configID, nodeEntry.nodeID);
-                if nodeInfo and nodeInfo.ranksPurchased < entry.targetRank then
-                    local success = false;
-                    if nodeEntry.isChoiceNode then
-                        success = C_Traits.SetSelection(configID, nodeEntry.nodeID, nodeEntry.selectionEntryID);
-                    elseif nodeEntry.ranksPurchased then
-                        success = C_Traits.PurchaseRank(configID, nodeEntry.nodeID);
-                    end
-                    if success then
-                        nodeEntry.ranksPurchased = nodeEntry.ranksPurchased - 1;
-                        if nodeEntry.ranksPurchased == 0 then
-                            removed = removed + 1;
-                            loadoutEntryInfo[entry.nodeID] = nil;
+            local entries = entriesByLevel[level] or {};
+            for _, entry in pairs(entries) do
+                if loadoutEntryInfo[entry.nodeID] then
+                    local nodeEntry = loadoutEntryInfo[entry.nodeID];
+                    local nodeInfo = C_Traits.GetNodeInfo(configID, nodeEntry.nodeID);
+                    if nodeInfo and nodeInfo.ranksPurchased < entry.targetRank then
+                        local success = false;
+                        if nodeEntry.isChoiceNode then
+                            success = C_Traits.SetSelection(configID, nodeEntry.nodeID, nodeEntry.selectionEntryID);
+                        elseif nodeEntry.ranksPurchased then
+                            success = C_Traits.PurchaseRank(configID, nodeEntry.nodeID);
+                        end
+                        if success then
+                            nodeEntry.ranksPurchased = nodeEntry.ranksPurchased - 1;
+                            if nodeEntry.ranksPurchased == 0 then
+                                removed = removed + 1;
+                                loadoutEntryInfo[entry.nodeID] = nil;
+                            end
                         end
                     end
                 end
@@ -934,7 +977,7 @@ function TLM:ApplyBlizzardLoadout(configID, autoApply, onAfterChangeCallback)
     self.charDb.selectedCustomLoadoutID[self.playerSpecID] = nil;
 end
 
---- @param loadoutInfo TalentLoadoutManager_LoadoutInfo_partial
+--- @param loadoutInfo TLM_LoadoutInfo_partial
 function TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specIDOrNil)
     local classID = tonumber(classIDOrNil) or self.playerClassID;
     local specID = tonumber(specIDOrNil) or self.playerSpecID;
@@ -944,7 +987,7 @@ function TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specI
 
     local id = "C_" .. self:IncrementCustomLoadoutAutoIncrement();
     local name = loadoutInfo.name or ('Custom Loadout ' .. id);
-    --- @type TalentLoadoutManager_LoadoutInfo
+    --- @type TLM_LoadoutInfo
     local newLoadoutInfo = {
         id = id,
         name = name,
@@ -957,7 +1000,7 @@ function TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specI
     end
     self.db.customLoadouts[classID][specID][id] = newLoadoutInfo;
     local namePrefix = newLoadoutInfo.levelingOrder and CreateAtlasMarkup("GarrMission_CurrencyIcon-Xp", 16, 16) or "";
-    --- @type TalentLoadoutManager_LoadoutDisplayInfo
+    --- @type TLM_LoadoutDisplayInfo
     local displayInfo = {
         id = id,
         displayName = namePrefix .. newLoadoutInfo.name,
@@ -976,7 +1019,7 @@ function TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specI
     return newLoadoutInfo;
 end
 
---- @return TalentLoadoutManager_LoadoutInfo|false false on errors
+--- @return TLM_LoadoutInfo|false false on errors
 --- @return string|nil error message on errors
 function TLM:CreateCustomLoadoutFromImportString(importString, autoApply, name, validateClassAndSpec, load)
     local classIDOrNil, specIDOrNil;
@@ -985,7 +1028,7 @@ function TLM:CreateCustomLoadoutFromImportString(importString, autoApply, name, 
     end
     local selectedNodes, errorOrLevelingOrder, classID, specID = self:BuildSerializedSelectedNodesFromImportString(importString, classIDOrNil, specIDOrNil);
     if selectedNodes then
-        --- @type TalentLoadoutManager_LoadoutInfo_partial
+        --- @type TLM_LoadoutInfo_partial
         local loadoutInfo = {
             name = name,
             selectedNodes = selectedNodes,
@@ -1005,7 +1048,7 @@ function TLM:CreateCustomLoadoutFromActiveTalents(name, classIDOrNil, specIDOrNi
     local classID = tonumber(classIDOrNil) or self.playerClassID;
     local specID = tonumber(specIDOrNil) or self.playerSpecID;
     local selectedNodes = self:SerializeLoadout(C_ClassTalents.GetActiveConfigID(), specID);
-    --- @type TalentLoadoutManager_LoadoutInfo_partial
+    --- @type TLM_LoadoutInfo_partial
     local loadoutInfo = {
         name = name,
         selectedNodes = selectedNodes,
@@ -1114,7 +1157,7 @@ end
 
 --- @param classID number|string
 --- @param specID number|string
---- @param loadoutInfo TalentLoadoutManager_LoadoutInfo
+--- @param loadoutInfo TLM_LoadoutInfo
 function TLM:ExportLoadoutToString(classID, specID, loadoutInfo)
     --- @type number
     classID = tonumber(classID); ---@diagnostic disable-line: assign-type-mismatch
