@@ -777,9 +777,9 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
                     parentConfigID = nil;
                 end
             end
-            self:SetParentLoadout(loadoutInfo.id, parentConfigID);
         end
     end
+    self:SetParentLoadout(loadoutInfo.id, parentConfigID);
 
     if autoApply and parentConfigID == nil then
         if not C_ClassTalents.CanCreateNewConfig() then
