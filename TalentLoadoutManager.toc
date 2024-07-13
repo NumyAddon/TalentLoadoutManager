@@ -15,6 +15,7 @@ core\ImportExportV1.lua
 core\ImportExportV2.lua
 core\IcyVeinsImport.lua
 core\TalentLoadoutManager.lua
+core\ReduceTaint.lua
 core\ManagerApi.lua
 core\BlizzardLoadoutChanger.lua
 core\Config.lua
