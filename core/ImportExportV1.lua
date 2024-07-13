@@ -1,6 +1,6 @@
 local _, ns = ...
 
-local LOADOUT_SERIALIZATION_VERSION = 2;
+local LOADOUT_SERIALIZATION_VERSION = 1;
 if C_Traits.GetLoadoutSerializationVersion() ~= LOADOUT_SERIALIZATION_VERSION then return; end
 
 --- @todo remove this file in TWW
@@ -332,8 +332,6 @@ end
 --- @param levelingBuild nil|TLM_LevelingBuildEntry_withLevel[]
 --- @public
 function ImportExport:ExportLoadoutToString(classID, specID, deserializedLoadout, levelingBuild)
-    local LOADOUT_SERIALIZATION_VERSION = C_Traits.GetLoadoutSerializationVersion and C_Traits.GetLoadoutSerializationVersion() or 1;
-
     local exportStream = ExportUtil.MakeExportDataStream();
     local treeID = LibTT:GetClassTreeId(classID);
 
