@@ -1,3 +1,4 @@
+--- @meta _
 --- Only some of the types described here, are part of the public API.
 
 -------------------
@@ -81,3 +82,33 @@
 ---|"sideBarInactiveElementTextColor"
 ---|"sideBarInactiveElementBackgroundColor"
 ---|"sideBarInactiveElementHighlightBackgroundColor"
+
+-------------------
+----- FrameXML ----
+-------------------
+
+---[FrameXML](https://www.townlong-yak.com/framexml/go/ImportDataStreamMixin)
+---@class ImportDataStreamMixin
+---@field dataValues number[]
+---@field currentIndex number
+---@field currentExtractedBits number
+---@field currentRemainingValue number
+ImportDataStreamMixin = {}
+
+---[FrameXML](https://www.townlong-yak.com/framexml/go/ImportDataStreamMixin:Init)
+---@param exportString string
+function ImportDataStreamMixin:Init(exportString) end
+
+---[FrameXML](https://www.townlong-yak.com/framexml/go/ImportDataStreamMixin:ExtractValue)
+---@param bitWidth number
+---@return number?
+function ImportDataStreamMixin:ExtractValue(bitWidth) end
+
+---[FrameXML](https://www.townlong-yak.com/framexml/go/ImportDataStreamMixin:GetNumberOfBits)
+---@return number
+function ImportDataStreamMixin:GetNumberOfBits() end
+
+---[FrameXML](https://www.townlong-yak.com/framexml/go/ExportUtil.MakeImportDataStream)
+---@param exportString string
+---@return ImportDataStreamMixin
+function ExportUtil.MakeImportDataStream(exportString) end
