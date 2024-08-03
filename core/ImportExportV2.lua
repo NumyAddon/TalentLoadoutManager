@@ -76,7 +76,7 @@ function ImportExport:BuildSerializedSelectedNodesFromImportString(importText, e
     end
 
     local treeID = LibTT:GetClassTreeId(classIDFromString);
-    if not self:IsHashValid(treeHash, treeID) then
+    if not treeID or not self:IsHashValid(treeHash, treeID) then
         return false, LOADOUT_ERROR_TREE_CHANGED;
     end
 
@@ -97,7 +97,7 @@ function ImportExport:BuildSerializedSelectedNodesFromImportString(importText, e
             local entryInfo = LibTT:GetEntryInfo(treeID, entryID);
             if entryInfo and entryInfo.definitionID then
                 local definitionInfo = C_Traits.GetDefinitionInfo(entryInfo.definitionID);
-                if definitionInfo.spellID then
+                if definitionInfo and definitionInfo.spellID then
                     serialized = serialized .. string.format(
                         formatString,
                         nodeID,

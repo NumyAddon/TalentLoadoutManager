@@ -4,39 +4,37 @@ local name, ns = ...
 local IcyVeinsImport = {};
 ns.IcyVeinsImport = IcyVeinsImport;
 
-local isDF = select(4, GetBuildInfo()) < 110000;
-
-local skillMappings = tInvert{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Ă', 'ă', 'Â', 'â', 'Î', 'î', 'Ș', 'ș', 'Ț', 'ț', 'ë', 'é', 'ê', 'ï', 'ô', 'β', 'Γ', 'γ', 'Δ', 'δ', 'ε', 'ζ'};
-
 --- @type LibTalentTree-1.0
 local LibTT = LibStub('LibTalentTree-1.0');
+
+local HERO_SELECTION_NODE_LEVEL = 71;
+
+IcyVeinsImport.bitWidthSpecID = 12;
+IcyVeinsImport.bitWidthNodeIndex = 6;
 
 --- @param text string
 --- @return boolean
 --- @public
 function IcyVeinsImport:IsTalentUrl(text)
-    -- example URL https://www.icy-veins.com/wow/dragonflight-talent-calculator#6--250$foo+bar*
-    return not not text:match('^https?://www%.icy%-veins%.com/wow/dragonflight%-talent%-calculator%#%d+%-%-%d+%$[^+]-%+[^*]-%*');
+    -- example URL https://www.icy-veins.com/wow/the-war-within-talent-calculator#seg1-seg2-seg3-seg4-seg5
+    return not not text:match('^https?://www%.icy%-veins%.com/wow/the%-war%-within%-talent%-calculator%#[^-]*%-[^-]*%-[^-]*%-[^-]*%-[^-]*$');
 end
 
 --- @param fullUrl string
---- @param expectedClassID number|nil # if classID from the fullUrl does not match this, the import will fail
---- @param expectedSpecID number|nil # if specID from the fullUrl does not match this, the import will fail
+--- @param expectedClassID number|nil # if set and the classID from the fullUrl does not match this, the import will fail
+--- @param expectedSpecID number|nil # if set and the specID from the fullUrl does not match this, the import will fail
 --- @return string|false # false on failure, serializedSelectedNodes on success
 --- @return string|nil # error message on failure, serializedLevelingOrder (if any) on success
 --- @return number|nil # actual classID on success
 --- @return number|nil # actual specID on success
 --- @public
 function IcyVeinsImport:BuildSerializedSelectedNodesFromUrl(fullUrl, expectedClassID, expectedSpecID)
-    if not isDF then
-        return false, 'IcyVeins import is not supported yet for TWW';
-    end
     if not self:IsTalentUrl(fullUrl) then
         return false, 'Invalid URL';
     end
 
-    local classID, specID, levelingOrder = self:ParseUrl(fullUrl);
-    if not levelingOrder or not classID or not specID then
+    local classID, specID, levelingBuild = self:ParseUrl(fullUrl);
+    if not levelingBuild or not classID or not specID then
         return false, 'Invalid URL';
     end
 
@@ -51,14 +49,13 @@ function IcyVeinsImport:BuildSerializedSelectedNodesFromUrl(fullUrl, expectedCla
     local selectedNodesByID = {};
     local serializedLevelingOrder = '';
 
-    --- format: level_nodeID_targetRank
     local vSep = ns.SERIALIZATION_VALUE_SEPARATOR;
     local nSep = ns.SERIALIZATION_NODE_SEPARATOR;
-    local lvlingFormatString = '%d' .. vSep .. '%d' .. vSep .. '%d' .. nSep;
 
-    for level = 10, ns.MAX_LEVEL do
-        local entry = levelingOrder[level];
-        if entry then
+    --- format: level_nodeID_targetRank
+    local lvlingFormatString = "%d" .. vSep .. "%d" .. vSep .. "%d" .. nSep;
+    for _, entries in pairs(levelingBuild.entries) do
+        for level, entry in pairs(entries) do
             serializedLevelingOrder = serializedLevelingOrder .. string.format(
                 lvlingFormatString,
                 level,
@@ -71,7 +68,7 @@ function IcyVeinsImport:BuildSerializedSelectedNodesFromUrl(fullUrl, expectedCla
             local entryInfo = LibTT:GetEntryInfo(entryID);
             if entryInfo and entryInfo.definitionID then
                 local definitionInfo = C_Traits.GetDefinitionInfo(entryInfo.definitionID);
-                if definitionInfo.spellID then
+                if definitionInfo and definitionInfo.spellID then
                     local currentRank = selectedNodesByID[entry.nodeID] and selectedNodesByID[entry.nodeID].rank or 0;
                     selectedNodesByID[entry.nodeID] = {
                         nodeID = entry.nodeID,
@@ -83,9 +80,26 @@ function IcyVeinsImport:BuildSerializedSelectedNodesFromUrl(fullUrl, expectedCla
             end
         end
     end
+    if levelingBuild.selectedSubTreeID then
+        local nodeID, _ = LibTT:GetSubTreeSelectionNodeIDAndEntryIDBySpecID(specID, levelingBuild.selectedSubTreeID);
+        if nodeID then
+            serializedLevelingOrder = serializedLevelingOrder .. string.format(
+                lvlingFormatString,
+                HERO_SELECTION_NODE_LEVEL,
+                nodeID,
+                1
+            );
+            selectedNodesByID[nodeID] = {
+                nodeID = nodeID,
+                entryID = nil,
+                spellID = levelingBuild.selectedSubTreeID,
+                rank = 1,
+            };
+        end
+    end
 
     local serializedSelectedNodes = '';
-    --- format: nodeID_entryID_spellID_rank
+    --- format: nodeID_entryID_spellIDOrSubTreeID_rank
     local formatString = "%d" .. vSep .. "%d" .. vSep .. "%d" .. vSep .. "%d" .. nSep;
     for _, info in pairs(selectedNodesByID) do
         serializedSelectedNodes = serializedSelectedNodes .. string.format(
@@ -103,105 +117,133 @@ end
 --- @param url string
 --- @return nil|number # classID
 --- @return nil|number # specID
---- @return nil|table<number, TLM_LevelingBuildEntry_withEntry> # [level] = entry
+--- @return nil|TLM_LevelingBuild
 --- @private
 function IcyVeinsImport:ParseUrl(url)
     local dataSection = url:match('#(.*)');
+    dataSection = dataSection:gsub(':', '/'); -- IcyVeins uses base64 with `:`, whereas wow uses `/`
 
-    local classID, specID, classData, specData = dataSection:match('^(%d+)%-%-(%d+)%$([^+]-)%+([^*]-)%*');
-    classID = tonumber(classID);
-    specID = tonumber(specID);
+    local specIDString, classString, specString, heroString, pvpString = string.split('-', dataSection);
+    local specIDStream = ExportUtil.MakeImportDataStream(specIDString);
+    local specID = tonumber(specIDStream:ExtractValue(self.bitWidthSpecID));
+    local classID = specID and C_SpecializationInfo.GetClassIDFromSpecID(specID);
 
     local treeID = classID and LibTT:GetClassTreeId(classID);
 
-    if not classID or not specID or not classData or not specData then
+    if not classID or not specID or not classString or not specString or not treeID then
         return nil;
     end
+    local classStream = ExportUtil.MakeImportDataStream(classString);
+    local specStream = ExportUtil.MakeImportDataStream(specString);
+    local heroStream = ExportUtil.MakeImportDataStream(heroString);
+    local selectedSubTreeID;
+    if heroStream:GetNumberOfBits() > 0 then
+        local heroTreeIndex = heroStream:ExtractValue(1) + 1;
+        selectedSubTreeID = LibTT:GetSubTreeIDsForSpecID(specID)[heroTreeIndex];
+    end
 
-    local classNodes, specNodes = self:GetClassAndSpecNodeIDs(specID, treeID);
+    local classNodes, specNodes, heroNodes = self:GetClassAndSpecNodeIDs(specID, treeID, selectedSubTreeID);
 
-    local levelingOrder = {};
-    self:ParseDataSegment(8, classData, levelingOrder, classNodes);
-    self:ParseDataSegment(9, specData, levelingOrder, specNodes);
+    local levelingBuild = { entries = {}, selectedSubTreeID = selectedSubTreeID };
+    levelingBuild.entries[1] = self:ParseDataSegment(10, 2, classStream, classNodes);
+    levelingBuild.entries[2] = self:ParseDataSegment(11, 2, specStream, specNodes);
+    if heroNodes and selectedSubTreeID then
+        levelingBuild.entries[selectedSubTreeID] = self:ParseDataSegment(71, 1, heroStream, heroNodes);
+    end
 
-    return classID, specID, levelingOrder;
+    return classID, specID, levelingBuild;
 end
 
---- @param levelingOrder table<number, TLM_LevelingBuildEntry_withEntry> # [level] = entry
+--- @param startingLevel number
+--- @param levelMultiplier number
+--- @param dataStream ImportDataStreamMixin
+--- @param nodes number[]
+--- @return table<number, TLM_LevelingBuildEntry_withEntry> # [level] = entry
 --- @private
-function IcyVeinsImport:ParseDataSegment(startingLevel, dataSegment, levelingOrder, nodes)
-    local splitDataSegment = {};
-    for char in string.gmatch(dataSegment, '.') do
-        table.insert(splitDataSegment, char);
-    end
+function IcyVeinsImport:ParseDataSegment(startingLevel, levelMultiplier, dataStream, nodes)
     local level = startingLevel;
     local rankByNodeID = {};
-    for index, char in ipairs(splitDataSegment) do
-        if char ~= '0' and char ~= '1' then
-            level = level + 2;
-            local nextChar = splitDataSegment[index + 1];
-            local mappingIndex = skillMappings[char];
+    local levelingOrder = {};
 
-            local nodeID = nodes[mappingIndex];
-            if not nodeID then
-                print('Error while importing IcyVeins URL: Could not find node for mapping index', mappingIndex);
-                if DevTool and DevTool.AddData then
-                    DevTool:AddData({
-                        mappingIndex = mappingIndex,
-                        char = char,
-                        nextChar = nextChar,
-                        index = index,
-                        dataSegment = dataSegment,
-                        splitDataSegment = splitDataSegment,
-                        nodes = nodes,
-                    }, 'Error while importing IcyVeins URL: Could not find node for mapping index')
-                end
-            else
-                local entryIndex = nextChar == '1' and 2 or 1;
-                local nodeInfo = LibTT:GetNodeInfo(nodeID);
-                local entry = (nodeInfo.type == Enum.TraitNodeType.Selection or nodeInfo.type == Enum.TraitNodeType.SubTreeSelection) and nodeInfo.entryIDs and nodeInfo.entryIDs[entryIndex] or nil;
-                rankByNodeID[nodeID] = (rankByNodeID[nodeID] or 0) + 1;
+    while (dataStream:GetNumberOfBits() - dataStream.currentExtractedBits) > self.bitWidthNodeIndex do
+        local success, nodeIndex = pcall(function() return dataStream:ExtractValue(self.bitWidthNodeIndex); end);
+        if not success or not nodeIndex then break; end
 
-                --- @type TLM_LevelingBuildEntry_withEntry
-                levelingOrder[level] = {
-                    nodeID = nodeID,
-                    entryID = entry,
-                    targetRank = rankByNodeID[nodeID],
-                };
+        nodeIndex = nodeIndex + 1; -- 0-based to 1-based
+        local nodeID = nodes[nodeIndex];
+        if not nodeID then
+            print('Error while importing IcyVeins URL: Could not find node for index', nodeIndex);
+            if DevTool and DevTool.AddData then
+                DevTool:AddData({
+                    nodeIndex = nodeIndex,
+                    nodes = nodes,
+                }, 'Error while importing IcyVeins URL: Could not find node for index')
             end
+        else
+            local nodeInfo = LibTT:GetNodeInfo(nodeID);
+            local isChoiceNode = nodeInfo.type == Enum.TraitNodeType.Selection or nodeInfo.type == Enum.TraitNodeType.SubTreeSelection;
+            local entry
+            if isChoiceNode then
+                local choiceIndex = dataStream:ExtractValue(1) + 1;
+                entry = nodeInfo.entryIDs and nodeInfo.entryIDs[choiceIndex] or nil;
+            end
+            rankByNodeID[nodeID] = (rankByNodeID[nodeID] or 0) + 1;
+
+            levelingOrder[level] = {
+                nodeID = nodeID,
+                entryID = entry,
+                targetRank = rankByNodeID[nodeID],
+            };
+            level = level + levelMultiplier;
         end
     end
+
+    return levelingOrder;
 end
 
 --- @private
 IcyVeinsImport.classAndSpecNodeCache = {};
+--- @param specID number
+--- @param treeID number
+--- @param selectedSubTreeID number?
+--- @return number[], number[], nil|number[] # classNodes, specNodes, heroNodes (if applicable)
 --- @private
-function IcyVeinsImport:GetClassAndSpecNodeIDs(specID, treeID)
+function IcyVeinsImport:GetClassAndSpecNodeIDs(specID, treeID, selectedSubTreeID)
     if self.classAndSpecNodeCache[specID] then
-        return unpack(self.classAndSpecNodeCache[specID]);
+        local classNodes, specNodes, heroNodesByTree = unpack(self.classAndSpecNodeCache[specID]);
+        return classNodes, specNodes, heroNodesByTree[selectedSubTreeID] or nil;
     end
 
     local nodes = C_Traits.GetTreeNodes(treeID);
 
     local classNodes = {};
     local specNodes = {};
+    local heroNodesByTree = {};
 
     for _, nodeID in ipairs(nodes or {}) do
         local nodeInfo = LibTT:GetNodeInfo(nodeID);
         if LibTT:IsNodeVisibleForSpec(specID, nodeID) and nodeInfo.maxRanks > 0 then
-            if nodeInfo.isClassNode then
+            if nodeInfo.isSubTreeSelection then
+                -- skip
+            elseif nodeInfo.subTreeID then
+                heroNodesByTree[nodeInfo.subTreeID] = heroNodesByTree[nodeInfo.subTreeID] or {};
+                table.insert(heroNodesByTree[nodeInfo.subTreeID], nodeID);
+            elseif nodeInfo.isClassNode then
                 table.insert(classNodes, nodeID);
             else
                 table.insert(specNodes, nodeID);
             end
         end
     end
+    for _, subTreeNodes in pairs(heroNodesByTree) do
+        table.sort(subTreeNodes);
+    end
 
     table.sort(classNodes);
     table.sort(specNodes);
 
-    self.classAndSpecNodeCache[specID] = {classNodes, specNodes};
+    self.classAndSpecNodeCache[specID] = {classNodes, specNodes, heroNodesByTree};
 
-    return classNodes, specNodes;
+    return classNodes, specNodes, heroNodesByTree[selectedSubTreeID] or nil;
 end
 
