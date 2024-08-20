@@ -100,7 +100,7 @@ function Module:ReplaceCopyLoadoutButton(talentsTab)
             self.cachedInspectExportString
             or (talentsTab:GetInspectUnit() and C_Traits.GenerateInspectImportString(talentsTab:GetInspectUnit()) or talentsTab:GetInspectString());
         if loadoutString and (loadoutString ~= '') then
-            Util:CopyText(loadoutString, 'Inspected Build');
+            self:CopyText(loadoutString, 'Inspected Build');
         end
     end);
 end
