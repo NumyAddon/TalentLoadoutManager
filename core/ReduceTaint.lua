@@ -1,6 +1,3 @@
-local isDF = select(4, GetBuildInfo()) < 110000;
-if isDF then return; end -- I don't feel like making sure it works on DF, with just 1 week left :)
-
 -- Only run if TTT (with its taint module) is missing
 -- This module is pretty much a copy/paste my TTT taint module
 if C_AddOns.IsAddOnLoaded('TalentTreeTweaks') then return; end
@@ -251,7 +248,7 @@ function Module:HandleActionBarEventTaintSpread()
         ['UNIT_FLAGS'] = true,
         ['UNIT_AURA'] = true,
     }
-    for _, actionButton in pairs(ActionBarButtonEventsFrame.frames) do
+    local function registerActionButtonEvents(actionButton)
         --@debug@
         hooksecurefunc(actionButton, 'UnregisterEvent', function(_, event)
             if events[event] then
@@ -266,6 +263,12 @@ function Module:HandleActionBarEventTaintSpread()
             actionButton:RegisterUnitEvent(petUnitEvent, 'pet');
         end
     end
+    for _, actionButton in pairs(ActionBarButtonEventsFrame.frames) do
+        registerActionButtonEvents(actionButton);
+    end
+    hooksecurefunc(ActionBarButtonEventsFrame, 'RegisterFrame', function(_, actionButton)
+        registerActionButtonEvents(actionButton);
+    end);
     for event in pairs(events) do
         ActionBarButtonEventsFrame:UnregisterEvent(event);
     end
