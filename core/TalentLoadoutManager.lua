@@ -371,8 +371,8 @@ function TLM:GetNodeAndEntryBySpellID(spellID, classID, specID)
     end
 end
 
---- @param nodeID number
---- @return boolean
+--- @param nodeID number?
+--- @return boolean? # nil if nodeID or configID is nil
 function TLM:IsChoiceNode(nodeID)
     local configID = C_ClassTalents.GetActiveConfigID();
     if configID == nil or nodeID == nil then return; end
@@ -653,9 +653,21 @@ function TLM:LoadoutInfoToEntryInfo(loadoutInfo)
         local nodeID, entryID = loadoutNodeInfo.nodeID, loadoutNodeInfo.entryID;
         if not nodeInfoExists then
             nodeID, entryID = self:GetNodeAndEntryBySpellID(loadoutNodeInfo.spellID, self.playerClassID, self.playerSpecID);
-            isChoiceNode = self:IsChoiceNode(nodeID);
+            isChoiceNode = self:IsChoiceNode(nodeID) or false;
         end
         if nodeID and entryID then
+            if entryInfo[nodeID] then -- duplicate nodeID
+                if
+                    entryInfo[nodeID].selectionEntryID == entryID
+                    and entryInfo[nodeID].ranksPurchased == loadoutNodeInfo.rank
+                    and entryInfo[nodeID].isChoiceNode == isChoiceNode
+                then
+                    -- duplicate entry, ignore
+                    totalEntries = totalEntries - 1;
+                else
+                    foundIssues = foundIssues + 1;
+                end
+            end
             --- @type TLM_LoadoutEntryInfo
             entryInfo[nodeID] = {
                 selectionEntryID = entryID,
