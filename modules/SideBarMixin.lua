@@ -360,13 +360,16 @@ function SideBarMixin:CreateImportDialog()
     checkbox:SetScript('OnLeave', function()
         GameTooltip:Hide();
     end);
-    checkbox:SetScript('OnClick', function(cb)
-        local checked = cb:GetChecked();
+    local function checkboxOnChange(cb)
+        local checked = cb:IsShown() and cb:GetChecked();
         local dialog = cb:GetParent();
         dialog.NameControl:SetShown(not checked);
         dialog.NameControl:SetText(checked and '*importing into current loadout*' or '');
         dialog:UpdateAcceptButtonEnabledState();
-    end);
+    end
+    checkbox:SetScript('OnClick', checkboxOnChange);
+    checkbox:SetScript('OnHide', checkboxOnChange);
+    checkbox:SetScript('OnShow', checkboxOnChange);
     checkbox.text = checkbox:CreateFontString(nil, 'ARTWORK', 'GameFontNormal');
     checkbox.text:SetPoint('LEFT', checkbox, 'RIGHT', 0, 1);
     checkbox.text:SetText(string.format('Import into currently selected custom loadout'));
