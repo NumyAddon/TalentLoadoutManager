@@ -316,6 +316,7 @@ function SideBarMixin:CreateImportDialog()
     dialog.NameControl = CreateFrame("Frame", nil, dialog, "ClassTalentLoadoutDialogNameControlTemplate");
     local nameControl = dialog.NameControl;
     nameControl.labelText = HUD_CLASS_TALENTS_IMPORT_DIALOG_NAME_LABEL;
+    nameControl.EditBox:SetMaxLetters(0);
     nameControl:SetPoint("TOPLEFT", importControl, "BOTTOMLEFT", 0, -25);
     nameControl:SetPoint("TOPRIGHT", importControl, "BOTTOMRIGHT", 0, -25);
     Mixin(nameControl, ClassTalentLoadoutImportDialogNameControlMixin);
