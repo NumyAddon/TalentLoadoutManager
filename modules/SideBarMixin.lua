@@ -1,6 +1,6 @@
 local addonName, ns = ...;
 
---- @class TLM_SideBarMixin
+--- @class TLM_SideBarMixin: AceModule, AceHook-3.0
 local SideBarMixin = {};
 ns.SideBarMixin = SideBarMixin;
 
@@ -15,6 +15,7 @@ local API = TalentLoadoutManagerAPI;
 local GlobalAPI = TalentLoadoutManagerAPI.GlobalAPI;
 local CharacterAPI = TalentLoadoutManagerAPI.CharacterAPI;
 
+SideBarMixin.IntegrateWithBlizzMove = true;
 SideBarMixin.ImplementAutoApply = false;
 SideBarMixin.ShowAnimationOnImport = false;
 SideBarMixin.ImplementTTTMissingWarning = false;
@@ -169,6 +170,7 @@ function SideBarMixin:OnInitialize()
 end
 
 function SideBarMixin:OnEnable()
+    error('override in implementation');
     -- override in implementation: should SetupHook on relevant addonLoaded
 end
 
@@ -194,9 +196,48 @@ function SideBarMixin:SetupHook()
     API:RegisterCallback(API.Event.LoadoutListUpdated, self.RefreshSideBarData, self);
 end
 
---- @return Frame
-function SideBarMixin:GetTalentsTab()
-    -- override in implementation
+do
+    --- @return PlayerSpellsFrame_TalentsFrame|TalentViewerUIMixinTWW
+    function SideBarMixin:GetTalentsTab()
+        error('override in implementation');
+    end
+
+    --- @param name string
+    function SideBarMixin:DoCreate(name)
+        error('override in implementation');
+    end
+
+    function SideBarMixin:GetLoadouts()
+        error('override in implementation');
+    end
+
+    function SideBarMixin:GetActiveLoadout(forceRefresh)
+        error('override in implementation');
+    end
+
+    function SideBarMixin:DoImport(importText, loadoutName, autoApply)
+        error('override in implementation');
+    end
+
+    function SideBarMixin:DoImportIntoCurrent(importText, autoApply)
+        error('override in implementation');
+    end
+
+    function SideBarMixin:GetDefaultActionText(elementData)
+        error('override in implementation');
+    end
+
+    function SideBarMixin:UpdateCustomLoadoutWithCurrentTalents(loadoutID)
+        error('override in implementation');
+    end
+
+    function SideBarMixin:DoLoad(loadoutID, autoApply)
+        error('override in implementation');
+    end
+
+    function SideBarMixin:GetBlizzMoveFrameTable()
+        error('override in implementation');
+    end
 end
 
 function SideBarMixin:OnTalentsTabShow(frame)
@@ -534,33 +575,20 @@ function SideBarMixin:CreateSideBar()
     sideBar.ScrollBoxContainer:SetPoint("TOPLEFT", sideBar.SaveButton, "BOTTOMLEFT", 0, -10);
     sideBar.ScrollBoxContainer:SetPoint("BOTTOMRIGHT", sideBar, "BOTTOMRIGHT", -10, 10);
 
-    if self.ImplementTTTMissingWarning and not C_AddOns.IsAddOnLoaded('TalentTreeTweaks') then
-        -- add a link to the addon
-        sideBar.WarningLink = CreateFrame("Button", nil, sideBar, "UIPanelButtonTemplate, UIButtonTemplate");
-        sideBar.WarningLink:SetSize(width - 50, 20);
-        sideBar.WarningLink:SetText("Download TalentTreeTweaks");
-        sideBar.WarningLink:SetPoint("BOTTOMLEFT", sideBar, "BOTTOMLEFT", 10, 10);
-        sideBar.WarningLink:SetScript("OnClick", function()
-            local url = "https://www.curseforge.com/wow/addons/talent-tree-tweaks";
-            StaticPopup_Show(self.copyDialogName, nil, nil, url);
-        end);
-
-        -- add a warning on the bottom of the sideBar
-        sideBar.Warning = sideBar:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge");
-        sideBar.Warning:SetPoint("BOTTOMLEFT", sideBar.WarningLink, "TOPLEFT", 0, 0);
-        sideBar.Warning:SetWidth(width - 50);
-        sideBar.Warning:SetText("TalentTreeTweaks is not loaded. You might encounter serious bugs without it.");
-        sideBar.Warning:SetTextColor(1, 0.5, 0.5);
-
-        local function onOptionChange(_, option, value)
-            if option == 'disableTTTWarning' then
-                sideBar.Warning:SetShown(not value);
-                sideBar.WarningLink:SetShown(not value);
-            end
+    -- add a warning on the bottom of the sideBar
+    sideBar.Warning = sideBar:CreateFontString(nil, "OVERLAY", "SystemFont_Shadow_Large");
+    sideBar.Warning:SetPoint("BOTTOMLEFT", sideBar, "BOTTOMLEFT", 10, 10);
+    sideBar.Warning:SetWidth(width - 50);
+    sideBar.Warning:SetText('');
+    sideBar.Warning:SetTextColor(1, 0.5, 0.5);
+    sideBar.Warning:SetScript("OnShow", function()
+        local badAddons = TLM:CheckForBadAddons(false);
+        local text = "";
+        for _, warning in pairs(badAddons) do
+            text = text .. warning .. "\n";
         end
-        Config:RegisterCallback(Config.Event.OptionValueChanged, onOptionChange);
-        onOptionChange(nil, 'disableTTTWarning', Config:GetConfig('disableTTTWarning'));
-    end
+        sideBar.Warning:SetText(text);
+    end);
 
     return sideBar, dataProvider;
 end
@@ -750,10 +778,7 @@ function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
         openInTTV = {
             text = "Open in TalentTreeViewer",
             notCheckable = true,
-            disabled = C_AddOns.GetAddOnEnableState(
-                TalentViewerLoader and TalentViewerLoader:GetLodAddonName() or 'TalentTreeViewer',
-                UnitName('player')
-            ) ~= 2,
+            disabled = nil == TalentViewerLoader,
             func = function()
                 self:OpenInTalentTreeViewer(elementData);
             end,
@@ -982,14 +1007,6 @@ function SideBarMixin:SortElements(dataProviderEntries)
         end
         return a.order < b.order;
     end);
-end
-
-function SideBarMixin:GetLoadouts()
-    -- override in implementation
-end
-
-function SideBarMixin:GetActiveLoadout(forceRefresh)
-    -- override in implementation
 end
 
 function SideBarMixin:RefreshSideBarData()

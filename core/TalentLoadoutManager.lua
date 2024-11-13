@@ -868,6 +868,7 @@ end
 --- @param levelingOrder TLM_LevelingBuildEntry_withLevel[]|nil # unordered list of entries
 --- @return number number of removed entries (due to successful purchases)
 function TLM:ResetAndPurchaseLoadoutEntries(configID, loadoutEntryInfo, levelingOrder)
+    self:CheckForBadAddons(true);
     local totalEntriesRemoved = 0;
     C_Traits.ResetTree(configID, self:GetTreeID());
     local entriesByLevel = {};
@@ -1214,4 +1215,31 @@ function TLM:BuildSerializedSelectedNodesFromImportString(importText, expectedCl
     end
 
     return ImportExport:BuildSerializedSelectedNodesFromImportString(importText, expectedClassID, expectedSpecID);
+end
+
+local printedWarning = {};
+--- @param printToChat boolean|nil # if true, a warning will be printed to chat if any bad addons are found
+--- @return table<string, string> # [addonName] = warning text
+function TLM:CheckForBadAddons(printToChat)
+    local badAddons = {};
+    -- zygor guides
+    if
+        ZygorGuidesViewer
+        and ZygorGuidesViewer.db
+        and ZygorGuidesViewer.db.profile
+        and ZygorGuidesViewer.db.profile.talenton
+    then
+        badAddons['ZygorGuidesViewer'] = 'Zygor Guides\' talent advisor is enabled. This is known to cause game freezes when changing loadouts. Disable this feature and report it to the author of Zygor Guides.';
+    end
+
+    if printToChat then
+        for addon, warningText in pairs(badAddons) do
+            if not printedWarning[addon] then
+                printedWarning[addon] = true;
+                self:Print(warningText);
+            end
+        end
+    end
+
+    return badAddons;
 end

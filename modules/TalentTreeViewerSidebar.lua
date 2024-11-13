@@ -38,7 +38,7 @@ function Module:GetTalentTreeViewer()
     return TalentViewer;
 end
 
----@return TalentViewerUIMixin|TalentViewerUIMixinTWW
+---@return TalentViewerUIMixinTWW
 function Module:GetTalentsTab()
     return self:GetTalentTreeViewer():GetTalentFrame();
 end

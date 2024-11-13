@@ -40,8 +40,9 @@ function Module:OnDisable()
     API:UnregisterCallback(API.Event.CustomLoadoutApplied, self);
 end
 
+--- @return PlayerSpellsFrame_TalentsFrame
 function Module:GetTalentsTab()
-    return ClassTalentFrame and ClassTalentFrame.TalentsTab or PlayerSpellsFrame.TalentsFrame;
+    return PlayerSpellsFrame.TalentsFrame;
 end
 
 function Module:SetupHook()
