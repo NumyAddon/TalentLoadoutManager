@@ -71,7 +71,7 @@ function Module:PrintSimcProfile()
     --- @type TalentLoadoutManagerAPI_LoadoutInfo
     for _, loadout in ipairs(GlobalAPI:GetLoadouts()) do
         if not loadout.isBlizzardLoadout or not loadout.playerIsOwner then
-            local importString = GlobalAPI:GetExportString(loadout.id);
+            local importString = GlobalAPI:GetExportString(loadout.id, true);
             customLoadoutsString = string.format(
                 "%s# Saved Loadout: %s\n# talents=%s\n",
                 customLoadoutsString,

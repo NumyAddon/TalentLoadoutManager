@@ -135,11 +135,12 @@ function GlobalAPI:GetLoadoutInfoByID(loadoutID)
 end
 
 --- @param loadoutID number|string - the loadout ID, this can be a blizzard ConfigID, or a custom TLM loadout ID
+--- @param excludeLevelingString boolean|nil - if true, leveling build information will never be included, even if it exists
 --- @return string|nil - export string, containing talent information. may also include leveling build information. nil if not found
-function GlobalAPI:GetExportString(loadoutID)
+function GlobalAPI:GetExportString(loadoutID, excludeLevelingString)
     local displayInfo = TLM:GetLoadoutByID(loadoutID);
 
-    return displayInfo and TLM:ExportLoadoutToString(displayInfo.classID, displayInfo.specID, displayInfo.loadoutInfo);
+    return displayInfo and TLM:ExportLoadoutToString(displayInfo.classID, displayInfo.specID, displayInfo.loadoutInfo, excludeLevelingString);
 end
 
 --- you cannot rename a Blizzard loadout if you are not the owner

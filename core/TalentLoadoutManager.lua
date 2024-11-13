@@ -1174,7 +1174,8 @@ end
 --- @param classID number|string
 --- @param specID number|string
 --- @param loadoutInfo TLM_LoadoutInfo
-function TLM:ExportLoadoutToString(classID, specID, loadoutInfo)
+--- @param excludeLevelingString boolean|nil
+function TLM:ExportLoadoutToString(classID, specID, loadoutInfo, excludeLevelingString)
     --- @type number
     classID = tonumber(classID); ---@diagnostic disable-line: assign-type-mismatch
     --- @type number
@@ -1192,7 +1193,7 @@ function TLM:ExportLoadoutToString(classID, specID, loadoutInfo)
     local key = loadoutInfo.selectedNodes .. '-LVL-' .. (loadoutInfo.levelingOrder or '');
     if not self.cache.exportStrings[classID][specID][key] then
         local deserialized = self:DeserializeLoadout(loadoutInfo.selectedNodes);
-        local deserializedLevelingOrder = loadoutInfo.levelingOrder and self:DeserializeLevelingOrder(loadoutInfo.levelingOrder);
+        local deserializedLevelingOrder = not excludeLevelingString and loadoutInfo.levelingOrder and self:DeserializeLevelingOrder(loadoutInfo.levelingOrder) or nil;
 
         self.cache.exportStrings[classID][specID][key] = ImportExport:ExportLoadoutToString(classID, specID, deserialized, deserializedLevelingOrder);
     end
