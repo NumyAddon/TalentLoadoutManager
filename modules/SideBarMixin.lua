@@ -29,13 +29,16 @@ local ANCHOR_LEFT = 0;
 local ANCHOR_RIGHT = 1;
 
 function SideBarMixin:OnInitialize()
+    local loadoutNameSubText = "Anything before the first '||' character will not display. This allows you to sort loadouts by adding a prefix.";
+
     local moduleName = self.name;
     self.renameDialogName = moduleName .. "_RenameLoadout";
     StaticPopupDialogs[self.renameDialogName] = {
-        text = "Rename loadout (%s)",
+        text = NORMAL_FONT_COLOR:WrapTextInColorCode("Rename loadout (%s)") .. "\n" .. loadoutNameSubText,
         button1 = OKAY,
         button2 = CANCEL,
         hasEditBox = true,
+        --- @param data TLM_SideBarLoadoutInfo
         OnShow = function (dialog, data)
             dialog.editBox:SetText(data.name);
             dialog.editBox:HighlightText();
@@ -46,6 +49,7 @@ function SideBarMixin:OnInitialize()
                 dialog.button1:Click();
             end);
         end,
+        --- @param data TLM_SideBarLoadoutInfo
         OnAccept = function(dialog, data)
             local newName = dialog.editBox:GetText();
             GlobalAPI:RenameLoadout(data.id, newName);
@@ -66,7 +70,7 @@ function SideBarMixin:OnInitialize()
 
     self.createDialogName = moduleName .. "_CreateLoadout";
     StaticPopupDialogs[self.createDialogName] = {
-        text = "Create custom loadout",
+        text = NORMAL_FONT_COLOR:WrapTextInColorCode("Create custom loadout") .. "\n" .. loadoutNameSubText,
         button1 = OKAY,
         button2 = CANCEL,
         hasEditBox = true,
@@ -101,6 +105,7 @@ function SideBarMixin:OnInitialize()
         text = "Delete loadout (%s)?",
         button1 = OKAY,
         button2 = CANCEL,
+        --- @param data TLM_SideBarLoadoutInfo
         OnAccept = function(dialog, data)
             GlobalAPI:DeleteLoadout(data.id);
             dialog:Hide();
@@ -116,8 +121,25 @@ function SideBarMixin:OnInitialize()
         text = "Remove loadout from list (%s)?",
         button1 = OKAY,
         button2 = CANCEL,
+        --- @param data TLM_SideBarLoadoutInfo
         OnAccept = function(dialog, data)
             GlobalAPI:RemoveLoadoutFromStorage(data.id);
+            dialog:Hide();
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    };
+
+    self.removeFromListBulkDialogName = moduleName .. "_RemoveLoadoutBulk";
+    StaticPopupDialogs[self.removeFromListBulkDialogName] = {
+        text = "Remove all loadouts from %s from the list?",
+        button1 = OKAY,
+        button2 = CANCEL,
+        --- @param data TLM_SideBarLoadoutInfo
+        OnAccept = function(dialog, data)
+            self:RemoveAllLoadoutsByOwner(data.owner);
             dialog:Hide();
         end,
         timeout = 0,
@@ -130,6 +152,7 @@ function SideBarMixin:OnInitialize()
     StaticPopupDialogs[self.copyDialogName] = {
         text = "CTRL-C to copy",
         button1 = CLOSE,
+        --- @param data string
         OnShow = function(dialog, data)
             local function HidePopup()
                 dialog:Hide();
@@ -207,6 +230,7 @@ do
         error('override in implementation');
     end
 
+    --- @return TalentLoadoutManagerAPI_LoadoutInfo[]
     function SideBarMixin:GetLoadouts()
         error('override in implementation');
     end
@@ -223,7 +247,8 @@ do
         error('override in implementation');
     end
 
-    function SideBarMixin:GetDefaultActionText(elementData)
+    --- @param entry TLM_SideBarDataProviderEntry
+    function SideBarMixin:GetDefaultActionText(entry)
         error('override in implementation');
     end
 
@@ -627,7 +652,8 @@ function SideBarMixin:CreateScrollBox(parentContainer)
     end
 
     --- @param frame TLM_ElementFrame
-    local function OnListElementInitialized(frame, elementData)
+    --- @param entry TLM_SideBarDataProviderEntry
+    local function OnListElementInitialized(frame, entry)
         --- @class TLM_ElementFrame
         local frame = frame;
         if not frame.Background then
@@ -647,11 +673,11 @@ function SideBarMixin:CreateScrollBox(parentContainer)
             frame.HighlightBackground:Hide();
         end
 
-        if elementData.isActive then
+        if entry.isActive then
             self.activeLoadoutFrame = frame;
         end
-        local text = elementData.text;
-        if elementData.parentID then
+        local text = entry.text;
+        if entry.parentID then
             text = "  ||  " .. text;
         end
         frame.Text:SetText(text);
@@ -666,22 +692,22 @@ function SideBarMixin:CreateScrollBox(parentContainer)
         end, frame);
         frame:SetScript("OnClick", function(_, button)
             if button == "LeftButton" then
-                self:OnElementClick(frame, elementData.data);
+                self:OnElementClick(frame, entry.data);
             elseif button == "RightButton" then
-                self:OnElementRightClick(frame, elementData.data);
+                self:OnElementRightClick(frame, entry.data);
             end
         end);
         frame:SetScript("OnEnter", function()
             frame.TalentBuildExportString = nil;
             GameTooltip:SetOwner(frame, "ANCHOR_RIGHT");
-            GameTooltip:SetText(elementData.text);
-            local defaultAction = self:GetDefaultActionText(elementData);
+            GameTooltip:SetText(entry.data.name);
+            local defaultAction = self:GetDefaultActionText(entry);
             GameTooltip:AddLine(string.format("Left-Click to %s this loadout", defaultAction), 1, 1, 1);
             GameTooltip:AddLine("Shift-Click to link to chat", 1, 1, 1);
             GameTooltip:AddLine("Right-Click for options", 1, 1, 1);
 
             -- Allows other addons, like TalentTreeTweaks to safely hook into GameTooltip:Show
-            frame.TalentBuildExportString = GlobalAPI:GetExportString(elementData.data.id);
+            frame.TalentBuildExportString = GlobalAPI:GetExportString(entry.data.id);
 
             GameTooltip:Show();
 
@@ -712,14 +738,16 @@ function SideBarMixin:InitDropDown(parentFrame)
     return dropDown;
 end
 
-function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
+--- @param frame TLM_ElementFrame
+--- @param loadoutInfo TLM_SideBarLoadoutInfo
+function SideBarMixin:OpenDropDownMenu(dropDown, frame, loadoutInfo)
     local talentsTab = self:GetTalentsTab();
     local classID = talentsTab:GetClassID();
     local playerClassID = select(3, UnitClass("player"));
 
     local items = {
         title = {
-            text = elementData.displayName,
+            text = loadoutInfo.displayName,
             isTitle = true,
             notCheckable = true,
         },
@@ -728,7 +756,7 @@ function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
             notCheckable = true,
             func = function()
                 local forceApply = false;
-                self:OnElementClick(frame, elementData, forceApply);
+                self:OnElementClick(frame, loadoutInfo, forceApply);
             end,
         },
         loadAndApply = {
@@ -736,47 +764,47 @@ function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
             notCheckable = true,
             func = function()
                 local forceApply = true;
-                self:OnElementClick(frame, elementData, forceApply);
+                self:OnElementClick(frame, loadoutInfo, forceApply);
             end,
             hidden = not self.ShowLoadAndApply,
         },
         saveCurrentIntoLoadout = {
             text = "Save current talents into loadout",
             notCheckable = true,
-            disabled = elementData.isBlizzardLoadout,
+            disabled = loadoutInfo.isBlizzardLoadout,
             func = function()
-                self:UpdateCustomLoadoutWithCurrentTalents(elementData.id);
+                self:UpdateCustomLoadoutWithCurrentTalents(loadoutInfo.id);
             end,
         },
         rename = {
             text = "Rename",
             notCheckable = true,
-            disabled = not elementData.playerIsOwner,
+            disabled = not loadoutInfo.playerIsOwner,
             func = function()
-                StaticPopup_Show(self.renameDialogName, elementData.displayName, nil, elementData);
+                StaticPopup_Show(self.renameDialogName, loadoutInfo.name, nil, loadoutInfo);
             end,
         },
         setParentLoadout = {
             text = "Set Blizzard base loadout",
             notCheckable = true,
-            hidden = classID ~= playerClassID or elementData.isBlizzardLoadout,
+            hidden = classID ~= playerClassID or loadoutInfo.isBlizzardLoadout,
             hasArrow = true,
             menuList = function()
-                return self:MakeBlizzardLoadoutsMenuList(elementData);
+                return self:MakeBlizzardLoadoutsMenuList(loadoutInfo);
             end,
         },
         export = {
             text = "Export",
             notCheckable = true,
             func = function()
-                self:ExportLoadout(elementData);
+                self:ExportLoadout(loadoutInfo);
             end,
         },
         linkToChat = {
             text = "Link to chat",
             notCheckable = true,
             func = function()
-                self:LinkToChat(elementData.id);
+                self:LinkToChat(loadoutInfo.id);
             end,
         },
         openInTTV = {
@@ -784,7 +812,7 @@ function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
             notCheckable = true,
             disabled = nil == TalentViewerLoader,
             func = function()
-                self:OpenInTalentTreeViewer(elementData);
+                self:OpenInTalentTreeViewer(loadoutInfo);
             end,
             hidden = not self.ShowShowInTTV,
         },
@@ -792,17 +820,25 @@ function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
             text = "Delete",
             notCheckable = true,
             func = function()
-                StaticPopup_Show(self.deleteDialogName, elementData.displayName, nil, elementData);
+                StaticPopup_Show(self.deleteDialogName, loadoutInfo.name, nil, loadoutInfo);
             end,
-            hidden = not elementData.playerIsOwner,
+            hidden = not loadoutInfo.playerIsOwner,
         },
         removeFromList = {
             text = "Remove from list",
             notCheckable = true,
             func = function()
-                StaticPopup_Show(self.removeFromListDialogName, elementData.displayName, nil, elementData);
+                StaticPopup_Show(self.removeFromListDialogName, loadoutInfo.name, nil, loadoutInfo);
             end,
-            hidden = elementData.playerIsOwner,
+            hidden = loadoutInfo.playerIsOwner,
+        },
+        removeFromListBulk = {
+            text = "Remove all loadouts from this character from the list",
+            notCheckable = true,
+            func = function()
+                StaticPopup_Show(self.removeFromListBulkDialogName, loadoutInfo.owner, nil, loadoutInfo);
+            end,
+            hidden = loadoutInfo.playerIsOwner,
         },
     };
 
@@ -818,6 +854,7 @@ function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
         items.openInTTV,
         items.delete,
         items.removeFromList,
+        items.removeFromListBulk,
     };
 
     self.menuList = {};
@@ -834,8 +871,22 @@ function SideBarMixin:OpenDropDownMenu(dropDown, frame, elementData)
     LibDD:EasyMenu(self.menuList, dropDown, frame, 80, 0);
 end
 
-function SideBarMixin:MakeBlizzardLoadoutsMenuList(elementData)
+--- @param owner string
+function SideBarMixin:RemoveAllLoadoutsByOwner(owner)
     local dataProvider = self.DataProvider;
+    --- @type TLM_SideBarDataProviderEntry[]
+    local elements = dataProvider:GetCollection();
+    for _, v in ipairs(elements) do
+        if v.data.isBlizzardLoadout and not v.data.playerIsOwner then
+            GlobalAPI:RemoveLoadoutFromStorage(v.data.id);
+        end
+    end
+end
+
+--- @param loadoutInfo TLM_SideBarLoadoutInfo
+function SideBarMixin:MakeBlizzardLoadoutsMenuList(loadoutInfo)
+    local dataProvider = self.DataProvider;
+    --- @type TLM_SideBarDataProviderEntry[]
     local elements = dataProvider:GetCollection();
     local menuList = {};
     for _, v in ipairs(elements) do
@@ -843,9 +894,9 @@ function SideBarMixin:MakeBlizzardLoadoutsMenuList(elementData)
             table.insert(menuList, {
                 text = v.data.displayName,
                 func = function()
-                    CharacterAPI:SetParentLoadout(elementData.id, v.data.id);
+                    CharacterAPI:SetParentLoadout(loadoutInfo.id, v.data.id);
                 end,
-                checked = v.data.id == elementData.parentID,
+                checked = v.data.id == loadoutInfo.parentID,
             });
         end
     end
@@ -853,8 +904,10 @@ function SideBarMixin:MakeBlizzardLoadoutsMenuList(elementData)
     return menuList;
 end
 
-function SideBarMixin:SetElementAsActive(frame, elementData)
-    self.activeLoadout = elementData;
+--- @param frame TLM_ElementFrame
+--- @param loadoutInfo TLM_SideBarLoadoutInfo
+function SideBarMixin:SetElementAsActive(frame, loadoutInfo)
+    self.activeLoadout = loadoutInfo;
     local previouslyActiveLoadoutFrame = self.activeLoadoutFrame;
     self.activeLoadoutFrame = frame;
     if previouslyActiveLoadoutFrame then
@@ -864,25 +917,29 @@ function SideBarMixin:SetElementAsActive(frame, elementData)
     self.SideBar.SaveButton:SetEnabled(self.activeLoadout and not self.activeLoadout.isBlizzardLoadout);
 end
 
-function SideBarMixin:OnElementClick(frame, elementData, forceApply)
+--- @param frame TLM_ElementFrame
+--- @param loadoutInfo TLM_SideBarLoadoutInfo
+function SideBarMixin:OnElementClick(frame, loadoutInfo, forceApply)
     if IsShiftKeyDown() then
-        self:LinkToChat(elementData.id);
+        self:LinkToChat(loadoutInfo.id);
         return;
     end
-    self:SetElementAsActive(frame, elementData);
+    self:SetElementAsActive(frame, loadoutInfo);
     if forceApply == nil then forceApply = Config:GetConfig('autoApply') end
     local autoApply = forceApply;
 
-    self:DoLoad(elementData.id, autoApply);
+    self:DoLoad(loadoutInfo.id, autoApply);
 end
 
-function SideBarMixin:OnElementRightClick(frame, elementData)
+--- @param frame TLM_ElementFrame
+--- @param loadoutInfo TLM_SideBarLoadoutInfo
+function SideBarMixin:OnElementRightClick(frame, loadoutInfo)
     local dropDown = self.DropDown;
-    if dropDown.currentElement ~= elementData.id then
+    if dropDown.currentElement ~= loadoutInfo.id then
         LibDD:CloseDropDownMenus();
     end
-    dropDown.currentElement = elementData.id;
-    self:OpenDropDownMenu(dropDown, frame, elementData);
+    dropDown.currentElement = loadoutInfo.id;
+    self:OpenDropDownMenu(dropDown, frame, loadoutInfo);
 end
 
 function SideBarMixin:LinkToChat(loadoutId)
@@ -914,8 +971,9 @@ function SideBarMixin:LinkToChat(loadoutId)
     end
 end
 
-function SideBarMixin:ExportLoadout(elementData)
-    local exportString = GlobalAPI:GetExportString(elementData.id);
+--- @param loadoutInfo TLM_SideBarLoadoutInfo
+function SideBarMixin:ExportLoadout(loadoutInfo)
+    local exportString = GlobalAPI:GetExportString(loadoutInfo.id);
     if not exportString then
         return;
     end
@@ -923,8 +981,9 @@ function SideBarMixin:ExportLoadout(elementData)
     StaticPopup_Show(self.copyDialogName, nil, nil, exportString);
 end
 
-function SideBarMixin:OpenInTalentTreeViewer(elementData)
-    local exportString = GlobalAPI:GetExportString(elementData.id);
+--- @param loadoutInfo TLM_SideBarLoadoutInfo
+function SideBarMixin:OpenInTalentTreeViewer(loadoutInfo)
+    local exportString = GlobalAPI:GetExportString(loadoutInfo.id);
     if not exportString then
         return;
     end
@@ -940,15 +999,18 @@ function SideBarMixin:OpenInTalentTreeViewer(elementData)
     TalentViewer:ImportLoadout(exportString);
 end
 
+--- @param dataProviderEntries TLM_SideBarDataProviderEntry[]
 function SideBarMixin:SortElements(dataProviderEntries)
     --- order by:
     --- 1. playerIsOwner
     --- 2. isBlizzardLoadout
-    --- 3. name (todo: make this optional?)
+    --- 3. name
     --- 4. id (basically, the order they were created?)
     ---
     --- custom loadouts are listed underneath their parent, if any
 
+    --- @param a TLM_SideBarDataProviderEntry
+    --- @param b TLM_SideBarDataProviderEntry
     local function compare(a, b)
         if not b then
             return false;
@@ -966,9 +1028,9 @@ function SideBarMixin:SortElements(dataProviderEntries)
             return false;
         end
 
-        if a.data.displayName < b.data.displayName then
+        if a.data.name < b.data.name then
             return true;
-        elseif a.data.displayName > b.data.displayName then
+        elseif a.data.name > b.data.name then
             return false;
         end
 
@@ -981,6 +1043,7 @@ function SideBarMixin:SortElements(dataProviderEntries)
         return false;
     end
 
+    --- @type TLM_SideBarDataProviderEntry[]
     local elements = CopyTable(dataProviderEntries);
 
     table.sort(elements, compare);
@@ -1027,13 +1090,19 @@ function SideBarMixin:RefreshSideBarData()
     local activeLoadoutID = self.activeLoadout and self.activeLoadout.id or nil;
     local dataProviderEntries = {}
     for _, loadout in pairs(loadouts) do
-        loadout.parentID = loadout.parentMapping and loadout.parentMapping[0];
-        table.insert(dataProviderEntries, {
+        --- @type TLM_SideBarLoadoutInfo
+        local loadout = loadout ---@diagnostic disable-line: assign-type-mismatch, redefined-local
+        --- @type number?
+        local parentID = loadout.parentMapping and loadout.parentMapping[0];
+        loadout.parentID = parentID;
+        --- @type TLM_SideBarDataProviderEntry
+        local entry = {
             text = loadout.displayName,
             data = loadout,
             isActive = loadout.id == activeLoadoutID,
-            parentID = loadout.parentID,
-        });
+            parentID = parentID,
+        };
+        table.insert(dataProviderEntries, entry);
         if loadout.id == activeLoadoutID then
             foundActiveLoadout = true;
         end

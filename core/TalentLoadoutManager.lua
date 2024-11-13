@@ -7,6 +7,9 @@ TLM._ns = ns;
 
 _G.TalentLoadoutManager = TLM;
 
+local BLIZZ_ATLAS = CreateAtlasMarkup("gmchat-icon-blizz", 16, 16);
+local XP_ATLAS = CreateAtlasMarkup("GarrMission_CurrencyIcon-Xp", 16, 16);
+
 ns.SERIALIZATION_NODE_SEPARATOR = "\n";
 --- format: nodeID_entryID_spellIDOrSubTreeID_rank
 ns.SERIALIZATION_VALUE_SEPARATOR = "_";
@@ -225,7 +228,7 @@ function TLM:RebuildLoadoutByIDCache()
         for specID, playerList in pairs(specList) do
             for playerName, loadoutList in pairs(playerList) do
                 for configID, loadoutInfo in pairs(loadoutList) do
-                    local displayName = CreateAtlasMarkup("gmchat-icon-blizz", 16, 16) .. loadoutInfo.name;
+                    local displayName = BLIZZ_ATLAS .. (loadoutInfo.name):gsub('.-||', '', 1);
                     if playerName ~= self.playerName then
                         displayName = displayName .. " (" .. playerName .. ")";
                     end
@@ -249,10 +252,10 @@ function TLM:RebuildLoadoutByIDCache()
     for classID, specList in pairs(self.db.customLoadouts) do
         for specID, loadoutList in pairs(specList) do
             for loadoutID, loadoutInfo in pairs(loadoutList) do
-                local namePrefix = loadoutInfo.levelingOrder and CreateAtlasMarkup("GarrMission_CurrencyIcon-Xp", 16, 16) or "";
+                local namePrefix = loadoutInfo.levelingOrder and XP_ATLAS or "";
                 local displayInfo = {
                     id = loadoutID,
-                    displayName = namePrefix .. loadoutInfo.name,
+                    displayName = namePrefix .. (loadoutInfo.name):gsub('.-||', '', 1),
                     loadoutInfo = loadoutInfo,
                     owner = nil,
                     playerIsOwner = true,
@@ -442,7 +445,7 @@ function TLM:UpdateBlizzardLoadout(configID, specID)
             id = configID,
         };
         self.db.blizzardLoadouts[classID][specID][self.playerName][configID] = loadoutInfo;
-        local displayName = CreateAtlasMarkup("gmchat-icon-blizz", 16, 16) .. loadoutInfo.name;
+        local displayName = BLIZZ_ATLAS .. (loadoutInfo.name):gsub('.-||', '', 1);
         local displayInfo = {
             id = configID,
             displayName = displayName,
@@ -476,10 +479,10 @@ function TLM:UpdateCustomLoadout(customLoadoutID, selectedNodes, levelingOrder, 
         loadoutInfo.selectedNodes = selectedNodes;
         loadoutInfo.levelingOrder = levelingOrder;
 
-        local namePrefix = loadoutInfo.levelingOrder and CreateAtlasMarkup("GarrMission_CurrencyIcon-Xp", 16, 16) or "";
+        local namePrefix = loadoutInfo.levelingOrder and XP_ATLAS or "";
         local displayInfo = {
             id = customLoadoutID,
-            displayName = namePrefix .. loadoutInfo.name,
+            displayName = namePrefix .. (loadoutInfo.name):gsub('.-||', '', 1),
             loadoutInfo = loadoutInfo,
             owner = nil,
             playerIsOwner = true,
@@ -846,10 +849,10 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
     end
 
     self.charDb.selectedCustomLoadoutID[self.playerSpecID] = loadoutInfo.id;
-    local namePrefix = loadoutInfo.levelingOrder and CreateAtlasMarkup("GarrMission_CurrencyIcon-Xp", 16, 16) or "";
+    local namePrefix = loadoutInfo.levelingOrder and XP_ATLAS or "";
     local displayInfo = {
         id = loadoutInfo.id,
-        displayName = namePrefix .. loadoutInfo.name,
+        displayName = namePrefix .. (loadoutInfo.name):gsub('.-||', '', 1),
         loadoutInfo = loadoutInfo,
         owner = nil,
         playerIsOwner = true,
@@ -1016,11 +1019,11 @@ function TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specI
         newLoadoutInfo.parentMapping[self.playerName] = self:GetActiveBlizzardLoadoutConfigID();
     end
     self.db.customLoadouts[classID][specID][id] = newLoadoutInfo;
-    local namePrefix = newLoadoutInfo.levelingOrder and CreateAtlasMarkup("GarrMission_CurrencyIcon-Xp", 16, 16) or "";
+    local namePrefix = newLoadoutInfo.levelingOrder and XP_ATLAS or "";
     --- @type TLM_LoadoutDisplayInfo
     local displayInfo = {
         id = id,
-        displayName = namePrefix .. newLoadoutInfo.name,
+        displayName = namePrefix .. (newLoadoutInfo.name):gsub('.-||', '', 1),
         loadoutInfo = newLoadoutInfo,
         owner = nil,
         playerIsOwner = true,
@@ -1086,10 +1089,10 @@ function TLM:RenameCustomLoadout(classIDOrNil, specIDOrNil, loadoutID, newName)
         local loadoutInfo = self.db.customLoadouts[classID][specID][loadoutID];
         loadoutInfo.name = newName;
 
-        local namePrefix = loadoutInfo.levelingOrder and CreateAtlasMarkup("GarrMission_CurrencyIcon-Xp", 16, 16) or "";
+        local namePrefix = loadoutInfo.levelingOrder and XP_ATLAS or "";
         local displayInfo = {
             id = loadoutID,
-            displayName = namePrefix .. loadoutInfo.name,
+            displayName = namePrefix .. (loadoutInfo.name):gsub('.-||', '', 1),
             loadoutInfo = loadoutInfo,
             owner = nil,
             playerIsOwner = true,

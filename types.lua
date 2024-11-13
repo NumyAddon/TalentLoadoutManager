@@ -21,6 +21,14 @@
 -------------------
 ----- private -----
 -------------------
+--- @class TLM_SideBarDataProviderEntry
+--- @field text string
+--- @field data TLM_SideBarLoadoutInfo
+--- @field isActive boolean
+--- @field parentID number|nil
+
+--- @class TLM_SideBarLoadoutInfo: TalentLoadoutManagerAPI_LoadoutInfo
+--- @field parentID number|nil
 
 --- @class TLM_LevelingBuildEntry
 --- @field nodeID number
