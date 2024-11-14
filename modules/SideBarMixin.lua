@@ -611,7 +611,7 @@ function SideBarMixin:CreateSideBar()
     sideBar.Warning:SetText('');
     sideBar.Warning:SetTextColor(1, 0.5, 0.5);
     sideBar.Warning:SetScript("OnShow", function()
-        local badAddons = TLM:CheckForBadAddons(false);
+        local badAddons = ns.TLM:CheckForBadAddons(false);
         local text = "";
         for _, warning in pairs(badAddons) do
             text = text .. warning .. "\n";
