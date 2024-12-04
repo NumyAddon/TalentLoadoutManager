@@ -1005,7 +1005,7 @@ function SideBarMixin:SortElements(dataProviderEntries)
     --- 1. playerIsOwner
     --- 2. isBlizzardLoadout
     --- 3. name
-    --- 4. id (basically, the order they were created?)
+    --- 4. id (basically, the order they were created)
     ---
     --- custom loadouts are listed underneath their parent, if any
 
