@@ -284,7 +284,8 @@ function SideBarMixin:UpdateScaleForFit(frame)
 end
 
 function SideBarMixin:UpdatePosition(frame)
-    if not Config:GetConfig('autoPosition') then return end
+    if not Config:GetConfig('autoPosition') then return; end
+    if frame:IsProtected() and InCombatLockdown() then return; end
 
     local offsetDirection = self:GetAnchorLocation() == ANCHOR_LEFT and 1 or -1;
     local replacePoint = true;
