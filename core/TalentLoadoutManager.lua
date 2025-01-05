@@ -107,8 +107,10 @@ function TLM:TRAIT_CONFIG_LIST_UPDATED()
     --- @type number
     self.playerSpecID = PlayerUtil.GetCurrentSpecID(); ---@diagnostic disable-line: assign-type-mismatch
     self:RebuildLoadoutByIDCache();
-    self:UpdateBlizzardLoadouts();
-    self:DetectDeletedParents();
+    LibTT:RegisterOnCacheWarmup(function()
+        self:UpdateBlizzardLoadouts();
+        self:DetectDeletedParents();
+    end);
 
     self:RegisterEvent("TRAIT_CONFIG_UPDATED");
     self:RegisterEvent("TRAIT_CONFIG_DELETED");
