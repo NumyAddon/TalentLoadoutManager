@@ -877,8 +877,8 @@ function SideBarMixin:RemoveAllLoadoutsByOwner(owner)
     local dataProvider = self.DataProvider;
     --- @type TLM_SideBarDataProviderEntry[]
     local elements = dataProvider:GetCollection();
-    for _, v in ipairs(elements) do
-        if v.data.isBlizzardLoadout and not v.data.playerIsOwner then
+    for _, v in pairs(elements) do
+        if v.data.isBlizzardLoadout and owner == v.data.owner then
             GlobalAPI:RemoveLoadoutFromStorage(v.data.id);
         end
     end
