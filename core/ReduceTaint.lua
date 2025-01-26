@@ -54,11 +54,11 @@ function Module:OnDisable()
     self:UnhookAll();
 end
 
---- @return FRAME
+--- @return PlayerSpellsFrame_TalentsFrame
 function Module:GetTalentFrame()
     return PlayerSpellsFrame and PlayerSpellsFrame.TalentsFrame;
 end
---- @return FRAME
+--- @return PlayerSpellsFrame
 function Module:GetTalentContainerFrame()
     return PlayerSpellsFrame;
 end
@@ -234,6 +234,9 @@ function Module:ShouldReplaceShareButton()
 end
 
 function Module:HandleActionBarEventTaintSpread()
+    -- no longer works after 11.1.0, but hopefully hasn't been needed since 11.0.7 either
+    if select(4, GetBuildInfo()) >= 110100 then return; end
+
     local events = {
         ['PLAYER_ENTERING_WORLD'] = true,
         ['ACTIONBAR_SLOT_CHANGED'] = true,
