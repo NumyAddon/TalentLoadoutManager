@@ -4,9 +4,6 @@ local addonName, ns = ...;
 local SideBarMixin = {};
 ns.SideBarMixin = SideBarMixin;
 
---- @type LibUIDropDownMenuNumy-4.0
-local LibDD = LibStub("LibUIDropDownMenuNumy-4.0");
-
 --- @type TalentLoadoutManagerConfig
 local Config = ns.Config;
 
@@ -206,7 +203,6 @@ end
 function SideBarMixin:SetupHook()
     if not self.SideBar then
         self.SideBar, self.DataProvider = self:CreateSideBar();
-        self.DropDown = self:InitDropDown(self.SideBar);
         self:SetCollapsed(Config:GetConfig(self.name .. SETTING_SUFFIX_COLLAPSED));
         self:UpdatePointsForAnchorLocation();
         self:TryIntegrateWithBlizzMove();
@@ -734,142 +730,67 @@ function SideBarMixin:CreateScrollBox(parentContainer)
     return ContainerFrame, dataProvider;
 end
 
-function SideBarMixin:InitDropDown(parentFrame)
-    local dropDown = LibDD:Create_UIDropDownMenu(self.name .. "_DropDown", parentFrame);
-    return dropDown;
-end
-
+--- @param rootDescription RootMenuDescriptionProxy
 --- @param frame TLM_ElementFrame
 --- @param loadoutInfo TLM_SideBarLoadoutInfo
-function SideBarMixin:OpenDropDownMenu(dropDown, frame, loadoutInfo)
+function SideBarMixin:GenerateMenu(rootDescription, frame, loadoutInfo)
     local talentsTab = self:GetTalentsTab();
     local classID = talentsTab:GetClassID();
     local playerClassID = select(3, UnitClass("player"));
 
-    local items = {
-        title = {
-            text = loadoutInfo.displayName,
-            isTitle = true,
-            notCheckable = true,
-        },
-        load = {
-            text = "Load",
-            notCheckable = true,
-            func = function()
-                local forceApply = false;
-                self:OnElementClick(frame, loadoutInfo, forceApply);
-            end,
-        },
-        loadAndApply = {
-            text = "Load & Apply",
-            notCheckable = true,
-            func = function()
-                local forceApply = true;
-                self:OnElementClick(frame, loadoutInfo, forceApply);
-            end,
-            hidden = not self.ShowLoadAndApply,
-        },
-        saveCurrentIntoLoadout = {
-            text = "Save current talents into loadout",
-            notCheckable = true,
-            disabled = loadoutInfo.isBlizzardLoadout,
-            func = function()
-                self:UpdateCustomLoadoutWithCurrentTalents(loadoutInfo.id);
-            end,
-        },
-        rename = {
-            text = "Rename",
-            notCheckable = true,
-            disabled = not loadoutInfo.playerIsOwner,
-            func = function()
-                StaticPopup_Show(self.renameDialogName, loadoutInfo.name, nil, loadoutInfo);
-            end,
-        },
-        setParentLoadout = {
-            text = "Set Blizzard base loadout",
-            notCheckable = true,
-            hidden = classID ~= playerClassID or loadoutInfo.isBlizzardLoadout,
-            hasArrow = true,
-            menuList = function()
-                return self:MakeBlizzardLoadoutsMenuList(loadoutInfo);
-            end,
-        },
-        export = {
-            text = "Export",
-            notCheckable = true,
-            func = function()
-                self:ExportLoadout(loadoutInfo);
-            end,
-        },
-        linkToChat = {
-            text = "Link to chat",
-            notCheckable = true,
-            func = function()
-                self:LinkToChat(loadoutInfo.id);
-            end,
-        },
-        openInTTV = {
-            text = "Open in TalentTreeViewer",
-            notCheckable = true,
-            disabled = nil == TalentViewerLoader,
-            func = function()
-                self:OpenInTalentTreeViewer(loadoutInfo);
-            end,
-            hidden = not self.ShowShowInTTV,
-        },
-        delete = {
-            text = "Delete",
-            notCheckable = true,
-            func = function()
-                StaticPopup_Show(self.deleteDialogName, loadoutInfo.name, nil, loadoutInfo);
-            end,
-            hidden = not loadoutInfo.playerIsOwner,
-        },
-        removeFromList = {
-            text = "Remove from list",
-            notCheckable = true,
-            func = function()
-                StaticPopup_Show(self.removeFromListDialogName, loadoutInfo.name, nil, loadoutInfo);
-            end,
-            hidden = loadoutInfo.playerIsOwner,
-        },
-        removeFromListBulk = {
-            text = "Remove all loadouts from this character from the list",
-            notCheckable = true,
-            func = function()
-                StaticPopup_Show(self.removeFromListBulkDialogName, loadoutInfo.owner, nil, loadoutInfo);
-            end,
-            hidden = loadoutInfo.playerIsOwner,
-        },
-    };
+    rootDescription:CreateTitle(loadoutInfo.displayName);
+    rootDescription:CreateButton("Load", function()
+        local forceApply = false;
+        self:OnElementClick(frame, loadoutInfo, forceApply);
+    end);
+    if self.ShowLoadAndApply then
+        rootDescription:CreateButton("Load & Apply", function()
+            local forceApply = true;
+            self:OnElementClick(frame, loadoutInfo, forceApply);
+        end);
+    end
+    rootDescription:CreateButton("Save current talents into loadout", function()
+        self:UpdateCustomLoadoutWithCurrentTalents(loadoutInfo.id);
+    end):SetEnabled(not loadoutInfo.isBlizzardLoadout);
+    rootDescription:CreateButton("Rename", function()
+        StaticPopup_Show(self.renameDialogName, loadoutInfo.name, nil, loadoutInfo);
+    end):SetEnabled(loadoutInfo.playerIsOwner);
+    if classID == playerClassID and not loadoutInfo.isBlizzardLoadout then
+        local baseLoadoutElementDescription = rootDescription:CreateButton("Set Blizzard base loadout", function() end);
 
-    local order = {
-        items.title,
-        items.setParentLoadout,
-        items.load,
-        items.loadAndApply,
-        items.saveCurrentIntoLoadout,
-        items.rename,
-        items.export,
-        items.linkToChat,
-        items.openInTTV,
-        items.delete,
-        items.removeFromList,
-        items.removeFromListBulk,
-    };
-
-    self.menuList = {};
-    for _, v in ipairs(order) do
-        if not v.hidden then
-            v.hidden = nil;
-            if v.menuList and type(v.menuList) == "function" then
-                v.menuList = v.menuList();
+        local function isSelected(data) return data.id == loadoutInfo.parentID; end
+        local function setSelected(data) CharacterAPI:SetParentLoadout(loadoutInfo.id, data.id); end
+        --- @type TLM_SideBarDataProviderEntry[]
+        local elements = self.DataProvider:GetCollection();
+        for _, element in ipairs(elements) do
+            if element.data.isBlizzardLoadout and element.data.playerIsOwner then
+                baseLoadoutElementDescription:CreateRadio(element.data.displayName, isSelected, setSelected, element.data);
             end
-            table.insert(self.menuList, v);
         end
     end
-
-    LibDD:EasyMenu(self.menuList, dropDown, frame, 80, 0);
+    rootDescription:CreateButton("Export", function()
+        self:ExportLoadout(loadoutInfo);
+    end);
+    rootDescription:CreateButton("Link to chat", function()
+        self:LinkToChat(loadoutInfo.id);
+    end);
+    if self.ShowShowInTTV then
+        rootDescription:CreateButton("Open in TalentTreeViewer", function()
+            self:OpenInTalentTreeViewer(loadoutInfo);
+        end):SetEnabled(nil ~= TalentViewerLoader);
+    end
+    if loadoutInfo.playerIsOwner then
+        rootDescription:CreateButton("Delete", function()
+            StaticPopup_Show(self.deleteDialogName, loadoutInfo.name, nil, loadoutInfo);
+        end);
+    else
+        rootDescription:CreateButton("Remove from list", function()
+            StaticPopup_Show(self.removeFromListDialogName, loadoutInfo.name, nil, loadoutInfo);
+        end);
+        rootDescription:CreateButton("Remove all loadouts from this character from the list", function()
+            StaticPopup_Show(self.removeFromListBulkDialogName, loadoutInfo.owner, nil, loadoutInfo);
+        end);
+    end
 end
 
 --- @param owner string
@@ -882,27 +803,6 @@ function SideBarMixin:RemoveAllLoadoutsByOwner(owner)
             GlobalAPI:RemoveLoadoutFromStorage(v.data.id);
         end
     end
-end
-
---- @param loadoutInfo TLM_SideBarLoadoutInfo
-function SideBarMixin:MakeBlizzardLoadoutsMenuList(loadoutInfo)
-    local dataProvider = self.DataProvider;
-    --- @type TLM_SideBarDataProviderEntry[]
-    local elements = dataProvider:GetCollection();
-    local menuList = {};
-    for _, v in ipairs(elements) do
-        if v.data.isBlizzardLoadout and v.data.playerIsOwner then
-            table.insert(menuList, {
-                text = v.data.displayName,
-                func = function()
-                    CharacterAPI:SetParentLoadout(loadoutInfo.id, v.data.id);
-                end,
-                checked = v.data.id == loadoutInfo.parentID,
-            });
-        end
-    end
-
-    return menuList;
 end
 
 --- @param frame TLM_ElementFrame
@@ -935,12 +835,9 @@ end
 --- @param frame TLM_ElementFrame
 --- @param loadoutInfo TLM_SideBarLoadoutInfo
 function SideBarMixin:OnElementRightClick(frame, loadoutInfo)
-    local dropDown = self.DropDown;
-    if dropDown.currentElement ~= loadoutInfo.id then
-        LibDD:CloseDropDownMenus();
-    end
-    dropDown.currentElement = loadoutInfo.id;
-    self:OpenDropDownMenu(dropDown, frame, loadoutInfo);
+    MenuUtil.CreateContextMenu(frame, function(_, rootDescription)
+        self:GenerateMenu(rootDescription, frame, loadoutInfo);
+    end);
 end
 
 function SideBarMixin:LinkToChat(loadoutId)
