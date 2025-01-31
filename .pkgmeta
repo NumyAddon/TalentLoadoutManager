@@ -11,3 +11,4 @@ externals:
         url: https://github.com/NumyAddon/LibTalentTree-1.0
         curse-slug: libtalenttree
     libs/LibUIDropDownMenu: https://github.com/NumyAddon/LibUIDropDownMenu
+    libs/LibVersionCheck-1.0: https://github.com/NumyAddon/LibVersionCheck-1.0.git
