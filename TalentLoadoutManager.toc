@@ -5,6 +5,7 @@
 ## Notes: Talent Loadout Manager
 ## Version: @project-version@
 ## X-Curse-Project-ID: 821821
+## X-Wago-ID: ZKbeD961
 ## SavedVariables: TalentLoadoutManagerDB
 ## SavedVariablesPerCharacter: TalentLoadoutManagerCharDB
 ## OptionalDeps: TalentTreeTweaks,Simulationcraft,BlizzMove
