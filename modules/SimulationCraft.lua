@@ -58,8 +58,10 @@ function Module:PrintSimcProfile()
     if not self.simc then return; end
     if not Config:GetConfig('integrateWithSimc') then return; end
 
+    --- @type EditBox|nil
+    local SimcEditBox = SimcEditBox;
     local text = SimcEditBox and SimcEditBox.GetText and SimcEditBox:GetText();
-    if not text then return; end
+    if not SimcEditBox or not text then return; end
 
     -- strip out the final '# Checksum: {hash}' line
     local hash = text:match("# Checksum: (%x+)$");
@@ -68,7 +70,6 @@ function Module:PrintSimcProfile()
     text = text:gsub("# Checksum: %x+$", "");
 
     local customLoadoutsString = "";
-    --- @type TalentLoadoutManagerAPI_LoadoutInfo
     for _, loadout in ipairs(GlobalAPI:GetLoadouts()) do
         if not loadout.isBlizzardLoadout or not loadout.playerIsOwner then
             local importString = GlobalAPI:GetExportString(loadout.id, true);
