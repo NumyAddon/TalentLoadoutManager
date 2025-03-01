@@ -75,7 +75,7 @@ function Module:PrintSimcProfile()
             customLoadoutsString = string.format(
                 "%s# Saved Loadout: %s\n# talents=%s\n",
                 customLoadoutsString,
-                loadout.name,
+                loadout.name:gsub("||", "|"),
                 importString
             );
         end
