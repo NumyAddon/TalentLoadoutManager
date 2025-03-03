@@ -70,12 +70,19 @@ function Module:PrintSimcProfile()
     text = text:gsub("# Checksum: %x+$", "");
 
     local customLoadoutsString = "";
+    local customLoadoutsChecksumString = "";
     for _, loadout in ipairs(GlobalAPI:GetLoadouts()) do
         if not loadout.isBlizzardLoadout or not loadout.playerIsOwner then
             local importString = GlobalAPI:GetExportString(loadout.id, true);
             customLoadoutsString = string.format(
                 "%s# Saved Loadout: %s\n# talents=%s\n",
                 customLoadoutsString,
+                loadout.name,
+                importString
+            );
+            customLoadoutsChecksumString = string.format(
+                "%s# Saved Loadout: %s\n# talents=%s\n",
+                customLoadoutsChecksumString,
                 loadout.name:gsub("||", "|"),
                 importString
             );
@@ -84,12 +91,9 @@ function Module:PrintSimcProfile()
 
     if customLoadoutsString == "" then return; end
 
-    -- append the custom loadouts to the end of the simc profile
-    text = text .. customLoadoutsString .. "\n"
-
     -- calculate the new checksum
-    local checksum = adler32(text);
-    text = text .. "# Checksum: " .. string.format('%x', checksum);
+    local checksum = adler32(text .. customLoadoutsChecksumString .. "\n");
+    text = text .. customLoadoutsString .. "\n" .. "# Checksum: " .. string.format('%x', checksum);
 
     -- update the simc edit box
     SimcEditBox:SetText(text);
