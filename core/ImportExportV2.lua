@@ -75,7 +75,7 @@ function ImportExport:BuildSerializedSelectedNodesFromImportString(importText, e
         return false, "Wrong class";
     end
 
-    local treeID = LibTT:GetClassTreeId(classIDFromString);
+    local treeID = LibTT:GetClassTreeID(classIDFromString);
     if not treeID or not self:IsHashValid(treeHash, treeID) then
         return false, LOADOUT_ERROR_TREE_CHANGED;
     end
@@ -92,9 +92,9 @@ function ImportExport:BuildSerializedSelectedNodesFromImportString(importText, e
     for i, nodeID in pairs(nodes) do
         local indexInfo = loadoutContent[i];
         if indexInfo.isNodePurchased then
-            local nodeInfo = LibTT:GetNodeInfo(treeID, nodeID);
+            local nodeInfo = LibTT:GetNodeInfo(nodeID);
             local entryID = indexInfo.isChoiceNode and nodeInfo.entryIDs[indexInfo.choiceNodeSelection] or nodeInfo.entryIDs[1];
-            local entryInfo = LibTT:GetEntryInfo(treeID, entryID);
+            local entryInfo = LibTT:GetEntryInfo(entryID);
             if entryInfo and entryInfo.definitionID then
                 local definitionInfo = C_Traits.GetDefinitionInfo(entryInfo.definitionID);
                 if definitionInfo and definitionInfo.spellID then
@@ -363,7 +363,7 @@ end
 --- @public
 function ImportExport:ExportLoadoutToString(classID, specID, deserializedLoadout, levelingBuild)
     local exportStream = ExportUtil.MakeExportDataStream();
-    local treeID = LibTT:GetClassTreeId(classID);
+    local treeID = LibTT:GetClassTreeID(classID);
 
     -- write header
     exportStream:AddValue(BIT_WIDTH_HEADER_VERSION, LOADOUT_SERIALIZATION_VERSION);
@@ -439,7 +439,7 @@ function ImportExport:WriteLoadoutContent(exportStream, deserialized, treeID, cl
             exportStream:AddValue(1, info and 1 or 0); -- isPurchased
         end
         if info then
-            local nodeInfo = LibTT:GetNodeInfo(treeID, nodeID);
+            local nodeInfo = LibTT:GetNodeInfo(nodeID);
             local isPartiallyRanked = nodeInfo and nodeInfo.maxRanks ~= info.rank
             exportStream:AddValue(1, isPartiallyRanked and 1 or 0);
             if isPartiallyRanked then
@@ -481,7 +481,7 @@ function ImportExport:WriteLevelingBuildContent(exportStream, treeID, deserializ
     for _, nodeID in ipairs(treeNodes) do
         local info = deserialized[nodeID];
         if info and info.rank > 0 then
-            local nodeInfo = LibTT:GetNodeInfo(treeID, nodeID);
+            local nodeInfo = LibTT:GetNodeInfo(nodeID);
             if nodeInfo.isSubTreeSelection then
                 exportStream:AddValue(LEVELING_BIT_WIDTH_DATA, HERO_SELECTION_NODE_LEVEL);
             else

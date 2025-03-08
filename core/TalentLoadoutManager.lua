@@ -344,13 +344,13 @@ function TLM:GetNodeAndEntryBySpellID(spellID, classID, specID)
         self.cache.spellNodeMap[classID] = self.cache.spellNodeMap[classID] or {};
         self.cache.spellNodeMap[classID][specID] = self.cache.spellNodeMap[classID][specID] or {};
 
-        local treeID = LibTT:GetClassTreeId(classID);
+        local treeID = LibTT:GetClassTreeID(classID);
         local nodes = self:GetTreeNodes(treeID);
         for _, nodeID in pairs(nodes) do
-            local nodeInfo = LibTT:IsNodeVisibleForSpec(specID, nodeID) and LibTT:GetNodeInfo(treeID, nodeID);
+            local nodeInfo = LibTT:IsNodeVisibleForSpec(specID, nodeID) and LibTT:GetNodeInfo(nodeID);
             if nodeInfo and nodeInfo.entryIDs then
                 for _, entryID in pairs(nodeInfo.entryIDs) do
-                    local entryInfo = LibTT:GetEntryInfo(treeID, entryID);
+                    local entryInfo = LibTT:GetEntryInfo(entryID);
                     if entryInfo and entryInfo.definitionID then
                         local definitionInfo = C_Traits.GetDefinitionInfo(entryInfo.definitionID);
                         if definitionInfo.spellID then
