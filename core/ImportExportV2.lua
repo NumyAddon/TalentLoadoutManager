@@ -94,7 +94,7 @@ function ImportExport:BuildSerializedSelectedNodesFromImportString(importText, e
         if indexInfo.isNodePurchased then
             local nodeInfo = LibTT:GetNodeInfo(nodeID);
             local entryID = indexInfo.isChoiceNode and nodeInfo.entryIDs[indexInfo.choiceNodeSelection] or nodeInfo.entryIDs[1];
-            local entryInfo = LibTT:GetEntryInfo(entryID);
+            local entryInfo = entryID and LibTT:GetEntryInfo(entryID);
             if entryInfo and entryInfo.definitionID then
                 local definitionInfo = C_Traits.GetDefinitionInfo(entryInfo.definitionID);
                 if definitionInfo and definitionInfo.spellID then
