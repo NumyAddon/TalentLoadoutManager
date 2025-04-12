@@ -228,6 +228,15 @@ function GlobalAPI:UpdateCustomLoadoutWithImportString(loadoutID, importText)
     return result and self:GetLoadoutInfoByID(loadoutID) or false, (not result and errorOrLevelingOrder or nil);
 end
 
+--- Returns a serialized string of talent selections from an import string
+--- Can be useful to compare import strings to see if they contain the same build
+--- IMPORTANT: the returned string format is not guaranteed to be stable, and may change at any time in the future
+--- @param importText string - the import string (icy-veins calculator URLs are also supported)
+--- @return string|false - false on failure, serializedSelectedNodes on success
+function GlobalAPI:SerializeLoadoutString(importText)
+    return TLM:BuildSerializedSelectedNodesFromImportString(importText);
+end
+
 -------------------------------------------------------------------------
 ---
 --- character specific functions

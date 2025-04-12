@@ -57,6 +57,10 @@ function Module:GetDefaultActionText(elementData)
         or "Load";
 end
 
+function Module:GetExportString()
+    return C_Traits.GenerateImportString(C_ClassTalents.GetActiveConfigID());
+end
+
 function Module:UpdateCustomLoadoutWithCurrentTalents(loadoutID)
     -- todo: add warning if the loadout has leveling information, as that'll get lost
     CharacterAPI:UpdateCustomLoadoutWithCurrentTalents(loadoutID);

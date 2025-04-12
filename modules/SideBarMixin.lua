@@ -211,7 +211,9 @@ function SideBarMixin:SetupHook()
     if not self.importDialog then
         self.importDialog = self:CreateImportDialog();
     end
-    self:SecureHookScript(self:GetTalentsTab(), "OnShow", "OnTalentsTabShow");
+    local talentsTab = self:GetTalentsTab();
+    self:SecureHookScript(talentsTab, "OnShow", "OnTalentsTabShow");
+    self:SecureHook(talentsTab, "OnUpdate", "OnTalentsChanged");
 
     API:RegisterCallback(API.Event.LoadoutListUpdated, self.RefreshSideBarData, self);
 end
@@ -232,6 +234,7 @@ do
         error('override in implementation');
     end
 
+    --- @return TalentLoadoutManagerAPI_LoadoutInfo|nil - selected loadout's info, if any
     function SideBarMixin:GetActiveLoadout(forceRefresh)
         error('override in implementation');
     end
@@ -249,6 +252,10 @@ do
         error('override in implementation');
     end
 
+    function SideBarMixin:GetExportString()
+        error('override in implementation');
+    end
+
     function SideBarMixin:UpdateCustomLoadoutWithCurrentTalents(loadoutID)
         error('override in implementation');
     end
@@ -261,6 +268,41 @@ do
     function SideBarMixin:GetBlizzMoveFrameTable()
         error('override in implementation');
     end
+end
+
+function SideBarMixin:OnTalentsChanged()
+    if self.talentChangePending then return; end
+    self.talentChangePending = true
+    RunNextFrame(function()
+        self.talentChangePending = false
+
+        self:SaveButtonUpdateEnableState();
+    end);
+end
+
+function SideBarMixin:SaveButtonUpdateEnableState()
+    local activeLoadout = self:GetActiveLoadout();
+    local identicalTalents = false;
+    if activeLoadout then
+        local savedExportString = GlobalAPI:GetExportString(activeLoadout.id);
+        local currentExportString = self:GetExportString();
+
+        if savedExportString == currentExportString then
+            identicalTalents = true;
+        elseif savedExportString and currentExportString and savedExportString ~= "" and currentExportString ~= "" then
+            local serializedSavedExportString = GlobalAPI:SerializeLoadoutString(savedExportString);
+            local serializedCurrentExportString = GlobalAPI:SerializeLoadoutString(currentExportString);
+
+            identicalTalents = serializedSavedExportString == serializedCurrentExportString;
+        end
+    end
+
+    self.SideBar.SaveButton:SetEnabled(
+        activeLoadout
+        and not activeLoadout.isBlizzardLoadout
+        and not activeLoadout.isLocked
+        and not identicalTalents
+    );
 end
 
 function SideBarMixin:OnTalentsTabShow(frame)
@@ -565,6 +607,7 @@ function SideBarMixin:CreateSideBar()
         if not activeLoadout or not activeLoadout.id then return; end
 
         self:UpdateCustomLoadoutWithCurrentTalents(activeLoadout.id);
+        self:SaveButtonUpdateEnableState();
     end);
     sideBar.SaveButton.tooltipText = "Save the current talents into the currently selected loadout";
 
@@ -839,7 +882,7 @@ function SideBarMixin:SetElementAsActive(frame, loadoutInfo)
         previouslyActiveLoadoutFrame:ApplyColors();
     end
     frame:ApplyColors();
-    self.SideBar.SaveButton:SetEnabled(self.activeLoadout and not self.activeLoadout.isBlizzardLoadout and not self.activeLoadout.isLocked);
+    self:SaveButtonUpdateEnableState();
 end
 
 --- @param frame TLM_ElementFrame
@@ -1036,7 +1079,7 @@ function SideBarMixin:RefreshSideBarData()
     self.DataProvider = CreateDataProvider(dataProviderEntries);
     self.SideBar.ScrollBoxContainer.ScrollBox:SetDataProvider(self.DataProvider);
 
-    self.SideBar.SaveButton:SetEnabled(self.activeLoadout and not self.activeLoadout.isBlizzardLoadout and not self.activeLoadout.isLocked);
+    self:SaveButtonUpdateEnableState();
 end
 
 function SideBarMixin:ShowConfigDialog()

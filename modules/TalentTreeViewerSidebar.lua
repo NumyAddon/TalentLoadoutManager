@@ -10,6 +10,7 @@ local GlobalAPI = TalentLoadoutManagerAPI.GlobalAPI;
 local Module = TLM:NewModule("TTVSideBar", "AceHook-3.0");
 TLM.TTVSideBarModule = Module;
 
+--- @type TLM_SideBarMixin
 local parentMixin = ns.SideBarMixin;
 Mixin(Module, parentMixin);
 
@@ -44,6 +45,10 @@ end
 
 function Module:GetDefaultActionText(elementData)
     return "Load";
+end
+
+function Module:GetExportString()
+    return self:GetTalentTreeViewer():ExportLoadout();
 end
 
 function Module:UpdateCustomLoadoutWithCurrentTalents(loadoutID)
