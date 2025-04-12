@@ -39,6 +39,7 @@ API.Event = {
 --- @param displayInfo TLM_LoadoutDisplayInfo
 --- @return TalentLoadoutManagerAPI_LoadoutInfo
 local function CreateLoadoutInfoFromDisplayInfo(displayInfo)
+    --- @type TalentLoadoutManagerAPI_LoadoutInfo
     return {
         id = displayInfo.id,
         displayName = displayInfo.displayName,
@@ -50,6 +51,7 @@ local function CreateLoadoutInfoFromDisplayInfo(displayInfo)
         parentMapping = displayInfo.parentMapping,
         classID = displayInfo.classID,
         specID = displayInfo.specID,
+        isLocked = displayInfo.isLocked,
     };
 end
 
@@ -158,6 +160,15 @@ function GlobalAPI:RenameLoadout(loadoutID, newName)
     else
         return TLM:RenameBlizzardLoadout(loadoutID, newName);
     end
+end
+
+function GlobalAPI:SetLoadoutLocked(loadoutID, isLocked)
+    local displayInfo = TLM:GetLoadoutByID(loadoutID);
+    if not displayInfo then
+        return false;
+    end
+
+    return TLM:SetLoadoutLocked(displayInfo.classID, displayInfo.specID, loadoutID, isLocked);
 end
 
 --- you cannot delete a Blizzard loadout if you are not the owner

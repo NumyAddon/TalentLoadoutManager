@@ -26,16 +26,9 @@ function Module:OnEnable()
     end);
 end
 
---- @return TalentViewer|TalentViewerTWW
+--- @return TalentViewerTWW
 function Module:GetTalentTreeViewer()
-    if TalentViewerLoader then return TalentViewerLoader:GetTalentViewer(); end
-    if not TalentViewer then --- @todo delete in TWW
-        C_AddOns.LoadAddOn(TalentViewerLoader and TalentViewerLoader:GetLodAddonName() or 'TalentTreeViewer')
-        if not TalentViewer then
-            error("TalentTreeViewer failed to load")
-        end
-    end
-    return TalentViewer;
+    return TalentViewerLoader:GetTalentViewer();
 end
 
 ---@return TalentViewerUIMixinTWW
@@ -72,6 +65,9 @@ function Module:GetLoadouts()
 end
 
 function Module:GetActiveLoadout(forceRefresh)
+    if forceRefresh and self.activeLoadout and self.activeLoadout.id then
+        return GlobalAPI:GetLoadoutInfoByID(self.activeLoadout.id);
+    end
     return self.activeLoadout;
 end
 
@@ -103,7 +99,9 @@ function Module:DoImportIntoCurrent(importText, autoApply)
     return loadoutInfo, errorOrNil;
 end
 
+--- @return BlizzMoveAPI_AddonFrameTable
 function Module:GetBlizzMoveFrameTable()
+    --- @type BlizzMoveAPI_AddonFrameTable
     return {
         [TalentViewerLoader and TalentViewerLoader:GetLodAddonName() or 'TalentTreeViewer'] = {
             ['TalentViewer_DF'] = {

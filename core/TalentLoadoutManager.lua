@@ -66,6 +66,7 @@ function TLM:OnInitialize()
     self.db = TalentLoadoutManagerDB;
     self.charDb = TalentLoadoutManagerCharDB;
     self.cache = {
+        --- @type table<string|number, TLM_LoadoutDisplayInfo>
         loadoutByID = {},
         exportStrings = {},
         deserializationCache = {},
@@ -234,6 +235,7 @@ function TLM:RebuildLoadoutByIDCache()
                     if playerName ~= self.playerName then
                         displayName = displayName .. " (" .. playerName .. ")";
                     end
+                    --- @type TLM_LoadoutDisplayInfo
                     local displayInfo = {
                         id = configID,
                         displayName = displayName,
@@ -244,6 +246,7 @@ function TLM:RebuildLoadoutByIDCache()
                         parentMapping = nil,
                         classID = classID,
                         specID = specID,
+                        isLocked = loadoutInfo.isLocked or false,
                     };
                     self.cache.loadoutByID[configID] = displayInfo;
                 end
@@ -255,6 +258,7 @@ function TLM:RebuildLoadoutByIDCache()
         for specID, loadoutList in pairs(specList) do
             for loadoutID, loadoutInfo in pairs(loadoutList) do
                 local namePrefix = loadoutInfo.levelingOrder and XP_ATLAS or "";
+                --- @type TLM_LoadoutDisplayInfo
                 local displayInfo = {
                     id = loadoutID,
                     displayName = namePrefix .. (loadoutInfo.name):gsub('.-||', '', 1),
@@ -265,6 +269,7 @@ function TLM:RebuildLoadoutByIDCache()
                     parentMapping = self:GetParentMappingForLoadout(loadoutInfo, specID),
                     classID = classID,
                     specID = specID,
+                    isLocked = loadoutInfo.isLocked or false,
                 };
                 self.cache.loadoutByID[loadoutID] = displayInfo;
             end
@@ -445,9 +450,11 @@ function TLM:UpdateBlizzardLoadout(configID, specID)
             selectedNodes = serialized,
             name = configInfo.name,
             id = configID,
+            isLocked = false,
         };
         self.db.blizzardLoadouts[classID][specID][self.playerName][configID] = loadoutInfo;
         local displayName = BLIZZ_ATLAS .. (loadoutInfo.name):gsub('.-||', '', 1);
+        --- @type TLM_LoadoutDisplayInfo
         local displayInfo = {
             id = configID,
             displayName = displayName,
@@ -457,6 +464,7 @@ function TLM:UpdateBlizzardLoadout(configID, specID)
             isBlizzardLoadout = true,
             classID = classID,
             specID = specID,
+            isLocked = loadoutInfo.isLocked or false,
         };
         self.cache.loadoutByID[configID] = displayInfo;
         self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, configID, displayInfo);
@@ -482,6 +490,7 @@ function TLM:UpdateCustomLoadout(customLoadoutID, selectedNodes, levelingOrder, 
         loadoutInfo.levelingOrder = levelingOrder;
 
         local namePrefix = loadoutInfo.levelingOrder and XP_ATLAS or "";
+        --- @type TLM_LoadoutDisplayInfo
         local displayInfo = {
             id = customLoadoutID,
             displayName = namePrefix .. (loadoutInfo.name):gsub('.-||', '', 1),
@@ -492,6 +501,7 @@ function TLM:UpdateCustomLoadout(customLoadoutID, selectedNodes, levelingOrder, 
             parentMapping = self:GetParentMappingForLoadout(loadoutInfo, specID),
             classID = classID,
             specID = specID,
+            isLocked = loadoutInfo.isLocked or false,
         }
         self.cache.loadoutByID[customLoadoutID] = displayInfo;
         self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, customLoadoutID, displayInfo);
@@ -852,6 +862,7 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
 
     self.charDb.selectedCustomLoadoutID[self.playerSpecID] = loadoutInfo.id;
     local namePrefix = loadoutInfo.levelingOrder and XP_ATLAS or "";
+    --- @type TLM_LoadoutDisplayInfo
     local displayInfo = {
         id = loadoutInfo.id,
         displayName = namePrefix .. (loadoutInfo.name):gsub('.-||', '', 1),
@@ -862,6 +873,7 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
         parentMapping = self:GetParentMappingForLoadout(loadoutInfo, self.playerSpecID),
         classID = self.playerClassID,
         specID = self.playerSpecID,
+        isLocked = loadoutInfo.isLocked or false,
     }
     self:TriggerEvent(self.Event.CustomLoadoutApplied, self.playerClassID, specID, loadoutInfo.id, displayInfo);
 
@@ -1016,6 +1028,7 @@ function TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specI
         selectedNodes = loadoutInfo.selectedNodes,
         levelingOrder = loadoutInfo.levelingOrder,
         parentMapping = {},
+        isLocked = false,
     }
     if classID == self.playerClassID and specID == self.playerSpecID then
         newLoadoutInfo.parentMapping[self.playerName] = self:GetActiveBlizzardLoadoutConfigID();
@@ -1033,6 +1046,7 @@ function TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specI
         parentMapping = self:GetParentMappingForLoadout(newLoadoutInfo, specID),
         classID = classID,
         specID = specID,
+        isLocked = newLoadoutInfo.isLocked or false,
     }
     self.cache.loadoutByID[id] = displayInfo;
     self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, id, displayInfo);
@@ -1055,6 +1069,7 @@ function TLM:CreateCustomLoadoutFromImportString(importString, autoApply, name, 
             name = name,
             selectedNodes = selectedNodes,
             levelingOrder = errorOrLevelingOrder,
+            isLocked = false,
         }
         loadoutInfo = self:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classID, specID);
         if load and classID == self.playerClassID and specID == self.playerSpecID then
@@ -1075,11 +1090,34 @@ function TLM:CreateCustomLoadoutFromActiveTalents(name, classIDOrNil, specIDOrNi
         name = name,
         selectedNodes = selectedNodes,
         levelingOrder = nil,
+        isLocked = false,
     }
     loadoutInfo = self:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classID, specID);
     self:ApplyCustomLoadout(loadoutInfo);
 
     return loadoutInfo;
+end
+
+function TLM:SetLoadoutLocked(classIDOrNil, specIDOrNil, loadoutID, isLocked)
+    local classID = tonumber(classIDOrNil) or self.playerClassID;
+    local specID = tonumber(specIDOrNil) or self.playerSpecID;
+    assert(type(loadoutID) == "string" or type(loadoutID) == "number", "loadoutID must be a string or number");
+
+    if self.db.customLoadouts[classID] and self.db.customLoadouts[classID][specID] and self.db.customLoadouts[classID][specID][loadoutID] then
+        local loadoutInfo = self.db.customLoadouts[classID][specID][loadoutID];
+        loadoutInfo.isLocked = isLocked;
+
+        local displayInfo = self.cache.loadoutByID[loadoutID]
+        displayInfo.isLocked = isLocked;
+
+        self.cache.loadoutByID[loadoutID] = displayInfo;
+        self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, loadoutID, displayInfo);
+        self:TriggerEvent(self.Event.LoadoutListUpdated);
+
+        return true;
+    end
+
+    return false;
 end
 
 function TLM:RenameCustomLoadout(classIDOrNil, specIDOrNil, loadoutID, newName)
@@ -1092,17 +1130,9 @@ function TLM:RenameCustomLoadout(classIDOrNil, specIDOrNil, loadoutID, newName)
         loadoutInfo.name = newName;
 
         local namePrefix = loadoutInfo.levelingOrder and XP_ATLAS or "";
-        local displayInfo = {
-            id = loadoutID,
-            displayName = namePrefix .. (loadoutInfo.name):gsub('.-||', '', 1),
-            loadoutInfo = loadoutInfo,
-            owner = nil,
-            playerIsOwner = true,
-            isBlizzardLoadout = false,
-            parentMapping = self:GetParentMappingForLoadout(loadoutInfo, specID),
-            classID = classID,
-            specID = specID,
-        }
+        local displayInfo = self.cache.loadoutByID[loadoutID]
+        displayInfo.displayName = namePrefix .. (loadoutInfo.name):gsub('.-||', '', 1);
+
         self.cache.loadoutByID[loadoutID] = displayInfo;
         self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, loadoutID, displayInfo);
         self:TriggerEvent(self.Event.LoadoutListUpdated);

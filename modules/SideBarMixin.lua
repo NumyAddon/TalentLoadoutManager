@@ -24,6 +24,7 @@ local SETTING_SUFFIX_COLLAPSED = "_Collapsed";
 local SETTING_SUFFIX_ANCHOR_LOCATION = "_AnchorLocation";
 local ANCHOR_LEFT = 0;
 local ANCHOR_RIGHT = 1;
+local LOCK_MARKUP = CreateAtlasMarkup("AdventureMapIcon-Lock", 16, 16);
 
 function SideBarMixin:OnInitialize()
     local loadoutNameSubText = "Anything before the first '||' character will not display. This allows you to sort loadouts by adding a prefix.";
@@ -256,6 +257,7 @@ do
         error('override in implementation');
     end
 
+    --- @return BlizzMoveAPI_AddonFrameTable
     function SideBarMixin:GetBlizzMoveFrameTable()
         error('override in implementation');
     end
@@ -633,12 +635,15 @@ function SideBarMixin:CreateScrollBox(parentContainer)
     --- @param frame TLM_ElementFrame
     local function elementFrameApplyColors(frame)
         local isSelected = (frame == self.activeLoadoutFrame);
+        --- @type ColorType
         local textColor = isSelected
             and Config:GetConfig('sideBarActiveElementTextColor')
             or Config:GetConfig('sideBarInactiveElementTextColor');
+        --- @type ColorType
         local backgroundColor = isSelected
             and Config:GetConfig('sideBarActiveElementBackgroundColor')
             or Config:GetConfig('sideBarInactiveElementBackgroundColor');
+        --- @type ColorType
         local highlightBackgroundColor = isSelected
             and Config:GetConfig('sideBarActiveElementHighlightBackgroundColor')
             or Config:GetConfig('sideBarInactiveElementHighlightBackgroundColor');
@@ -674,6 +679,9 @@ function SideBarMixin:CreateScrollBox(parentContainer)
             self.activeLoadoutFrame = frame;
         end
         local text = entry.text;
+        if entry.data.isLocked then
+            text = LOCK_MARKUP .. " " .. text;
+        end
         if entry.parentID then
             text = "  ||  " .. text;
         end
@@ -751,7 +759,16 @@ function SideBarMixin:GenerateMenu(rootDescription, frame, loadoutInfo)
     end
     rootDescription:CreateButton("Save current talents into loadout", function()
         self:UpdateCustomLoadoutWithCurrentTalents(loadoutInfo.id);
-    end):SetEnabled(not loadoutInfo.isBlizzardLoadout);
+    end):SetEnabled(not loadoutInfo.isBlizzardLoadout and not loadoutInfo.isLocked);
+
+    local lock = rootDescription:CreateCheckbox(
+        "Locked",
+        function() return loadoutInfo.isLocked; end,
+        function() self:ToggleLock(loadoutInfo.id); return MenuResponse.CloseAll; end
+    );
+    lock:SetEnabled(not loadoutInfo.isBlizzardLoadout);
+    lock:SetTitleAndTextTooltip("Lock loadout", "Locking a loadout blocks you from saving changes to it.");
+
     rootDescription:CreateButton("Rename", function()
         StaticPopup_Show(self.renameDialogName, loadoutInfo.name, nil, loadoutInfo);
     end):SetEnabled(loadoutInfo.playerIsOwner);
@@ -805,6 +822,13 @@ function SideBarMixin:RemoveAllLoadoutsByOwner(owner)
     end
 end
 
+function SideBarMixin:ToggleLock(loadoutID)
+    local loadoutInfo = GlobalAPI:GetLoadoutInfoByID(loadoutID);
+    if not loadoutInfo then return; end
+
+    GlobalAPI:SetLoadoutLocked(loadoutID, not loadoutInfo.isLocked);
+end
+
 --- @param frame TLM_ElementFrame
 --- @param loadoutInfo TLM_SideBarLoadoutInfo
 function SideBarMixin:SetElementAsActive(frame, loadoutInfo)
@@ -815,7 +839,7 @@ function SideBarMixin:SetElementAsActive(frame, loadoutInfo)
         previouslyActiveLoadoutFrame:ApplyColors();
     end
     frame:ApplyColors();
-    self.SideBar.SaveButton:SetEnabled(self.activeLoadout and not self.activeLoadout.isBlizzardLoadout);
+    self.SideBar.SaveButton:SetEnabled(self.activeLoadout and not self.activeLoadout.isBlizzardLoadout and not self.activeLoadout.isLocked);
 end
 
 --- @param frame TLM_ElementFrame
@@ -947,16 +971,16 @@ function SideBarMixin:SortElements(dataProviderEntries)
     table.sort(elements, compare);
     local lookup = {};
     for index, element in ipairs(elements) do
-        element.order = index;
-        element.subOrder = 0;
+        element.order = index; ---@diagnostic disable-line: inject-field
+        element.subOrder = 0; ---@diagnostic disable-line: inject-field
         lookup[element.data.id] = element;
     end
 
     for index, element in ipairs(elements) do
         local parentIndex = element.parentID and lookup[element.parentID] and lookup[element.parentID].order;
         if parentIndex then
-            element.order = parentIndex;
-            element.subOrder = index;
+            element.order = parentIndex; ---@diagnostic disable-line: inject-field
+            element.subOrder = index; ---@diagnostic disable-line: inject-field
         end
     end
 
@@ -1012,7 +1036,7 @@ function SideBarMixin:RefreshSideBarData()
     self.DataProvider = CreateDataProvider(dataProviderEntries);
     self.SideBar.ScrollBoxContainer.ScrollBox:SetDataProvider(self.DataProvider);
 
-    self.SideBar.SaveButton:SetEnabled(self.activeLoadout and not self.activeLoadout.isBlizzardLoadout);
+    self.SideBar.SaveButton:SetEnabled(self.activeLoadout and not self.activeLoadout.isBlizzardLoadout and not self.activeLoadout.isLocked);
 end
 
 function SideBarMixin:ShowConfigDialog()
@@ -1023,6 +1047,8 @@ function SideBarMixin:TryIntegrateWithBlizzMove()
     if not self.IntegrateWithBlizzMove or not C_AddOns.IsAddOnLoaded('BlizzMove') then return; end
 
     local compatible = false;
+    --- @type BlizzMoveAPI|nil
+    local BlizzMoveAPI = _G.BlizzMoveAPI; ---@diagnostic disable-line: undefined-field
     if(BlizzMoveAPI and BlizzMoveAPI.GetVersion and BlizzMoveAPI.RegisterAddOnFrames) then
         local _, _, _, _, versionInt = BlizzMoveAPI:GetVersion()
         if (versionInt == nil or versionInt >= 30200) then

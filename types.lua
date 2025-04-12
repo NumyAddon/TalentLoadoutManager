@@ -17,6 +17,7 @@
 --- @field parentMapping number[]|nil - only set if this is a custom loadout, [playerName-realmName] = parentLoadoutID, position [0] contains the current player's parentLoadoutID if any
 --- @field classID number
 --- @field specID number
+--- @field isLocked boolean - should appear locked in the UI, and should not be edited (the API won't block it though)
 
 -------------------
 ----- private -----
@@ -60,11 +61,13 @@
 --- @field parentMapping number[]|nil - only set if this is a custom loadout, [playerName-realmName] = parentLoadoutID, position [0] contains the current player's parentLoadoutID if any
 --- @field classID number
 --- @field specID number
+--- @field isLocked boolean - should appear locked in the UI, and should not be edited (the API won't block it though)
 
 --- @class TLM_LoadoutInfo_partial
 --- @field name string
 --- @field selectedNodes string - serialized loadout
 --- @field levelingOrder string|nil - serialized leveling order
+--- @field isLocked boolean - should appear locked in the UI, and should not be edited (the API won't block it though)
 
 --- @class TLM_LoadoutInfo: TLM_LoadoutInfo_partial
 --- @field id number|string - custom loadouts are prefixed with "C_" to avoid collisions with blizzard loadouts

@@ -96,30 +96,10 @@ function Module:DoImportIntoCurrent(importText, autoApply)
     return result, errorOrNil;
 end
 
+--- @return BlizzMoveAPI_AddonFrameTable
 function Module:GetBlizzMoveFrameTable()
+    --- @type BlizzMoveAPI_AddonFrameTable
     return {
-        ["Blizzard_ClassTalentUI"] = { --- @todo: delete in TWW
-            ["ClassTalentFrame"] = {
-                MinVersion = 100000,
-                MaxVersion = 110000,
-                SubFrames = {
-                    ["ClassTalentFrame.TalentsTab.ButtonsParent"] = {
-                        MinVersion = 100000,
-                        MaxVersion = 110000,
-                    },
-                    ["ClassTalentFrame.TalentsTab"] = {
-                        MinVersion = 100000,
-                        MaxVersion = 110000,
-                        SubFrames = {
-                            ["TLM-SideBar"] = {
-                                FrameReference = self.SideBar,
-                                Detachable = true,
-                            },
-                        },
-                    },
-                },
-            },
-        },
         ["Blizzard_PlayerSpells"] = {
             ["PlayerSpellsFrame"] = {
                 MinVersion = 110000,
