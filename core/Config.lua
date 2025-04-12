@@ -33,6 +33,7 @@ function Config:Initialize()
         sideBarInactiveElementTextColor = { r = 1, g = 1, b = 1, a = 1 },
         sideBarInactiveElementBackgroundColor = { r = 0, g = 0, b = 0, a = 0.5 },
         sideBarInactiveElementHighlightBackgroundColor = { r = 0.5, g = 0.5, b = 0.5, a = 0.5 },
+        characterVisibility = {},
     };
     for key, value in pairs(self.defaultConfig) do
         if TLM.db.config[key] == nil then
@@ -115,6 +116,14 @@ You can create a leveling build yourself, either using the IcyVeins talent calcu
                 desc = "Automatically add custom talent loadouts to the SimulationCraft addon when /simc is used.",
                 descStyle = "inline",
                 width = "full",
+            },
+            resetCharacterVisibility = {
+                order = orderCount(),
+                type = "execute",
+                name = "Reset Hidden Characters",
+                desc = "Resets characters whose loadouts were hidden in the sidebar.",
+                func = function() self:ClearCharacterVisibility(); end,
+                width = "double",
             },
             sideBarColors = {
                 order = orderCount(),
@@ -200,10 +209,13 @@ You can create a leveling build yourself, either using the IcyVeins talent calcu
         },
     };
 
-    return options
+    return options;
 end
 
-Config.Event = { OptionValueChanged = 'OptionValueChanged' };
+Config.Event = {
+    OptionValueChanged = 'OptionValueChanged',
+    CharacterVisibilityChanged = 'CharacterVisibilityChanged',
+};
 
 function Config:RegisterOptions()
     LibStub("AceConfig-3.0"):RegisterOptionsTable(addonName, self:GetOptions());
@@ -227,6 +239,20 @@ function Config:IsOptionDisabled(option)
     end
 
     return false;
+end
+
+function Config:ClearCharacterVisibility()
+    TLM.db.config.characterVisibility = {};
+    self:TriggerEvent(self.Event.CharacterVisibilityChanged);
+end
+
+function Config:SetCharacterShown(characterName, isShown)
+    TLM.db.config.characterVisibility[characterName] = isShown;
+    self:TriggerEvent(self.Event.CharacterVisibilityChanged);
+end
+
+function Config:IsCharacterShown(characterName)
+    return TLM.db.config.characterVisibility[characterName] ~= false;
 end
 
 --- @param option TLM_ConfigOptions

@@ -199,6 +199,7 @@ function SideBarMixin:OnDisable()
     self:UnhookAll();
 
     API:UnregisterCallback(API.Event.LoadoutListUpdated, self);
+    Config:UnregisterCallback(Config.Event.CharacterVisibilityChanged, self);
 end
 
 function SideBarMixin:SetupHook()
@@ -216,6 +217,7 @@ function SideBarMixin:SetupHook()
     self:SecureHook(talentsTab, "OnUpdate", "OnTalentsChanged");
 
     API:RegisterCallback(API.Event.LoadoutListUpdated, self.RefreshSideBarData, self);
+    Config:RegisterCallback(Config.Event.CharacterVisibilityChanged, self.RefreshSideBarData, self);
 end
 
 do
@@ -850,6 +852,10 @@ function SideBarMixin:GenerateMenu(rootDescription, frame, loadoutInfo)
         rootDescription:CreateButton("Remove all loadouts from this character from the list", function()
             StaticPopup_Show(self.removeFromListBulkDialogName, loadoutInfo.owner, nil, loadoutInfo);
         end);
+        rootDescription:CreateButton("Permanently hide all loadouts from this character", function()
+            Config:SetCharacterShown(loadoutInfo.owner, false);
+            TLM:Printf("Loadouts from %s are now hidden. You can reset this in the config.", loadoutInfo.owner);
+        end);
     end
 end
 
@@ -1055,21 +1061,23 @@ function SideBarMixin:RefreshSideBarData()
     local activeLoadoutID = self.activeLoadout and self.activeLoadout.id or nil;
     local dataProviderEntries = {}
     for _, loadout in pairs(loadouts) do
-        --- @type TLM_SideBarLoadoutInfo
-        local loadout = loadout ---@diagnostic disable-line: assign-type-mismatch, redefined-local
-        --- @type number?
-        local parentID = loadout.parentMapping and loadout.parentMapping[0];
-        loadout.parentID = parentID;
-        --- @type TLM_SideBarDataProviderEntry
-        local entry = {
-            text = loadout.displayName,
-            data = loadout,
-            isActive = loadout.id == activeLoadoutID,
-            parentID = parentID,
-        };
-        table.insert(dataProviderEntries, entry);
-        if loadout.id == activeLoadoutID then
-            foundActiveLoadout = true;
+        if loadout.playerIsOwner or not loadout.owner or Config:IsCharacterShown(loadout.owner) then
+            --- @type TLM_SideBarLoadoutInfo
+            local loadout = loadout ---@diagnostic disable-line: assign-type-mismatch, redefined-local
+            --- @type number?
+            local parentID = loadout.parentMapping and loadout.parentMapping[0];
+            loadout.parentID = parentID;
+            --- @type TLM_SideBarDataProviderEntry
+            local entry = {
+                text = loadout.displayName,
+                data = loadout,
+                isActive = loadout.id == activeLoadoutID,
+                parentID = parentID,
+            };
+            table.insert(dataProviderEntries, entry);
+            if loadout.id == activeLoadoutID then
+                foundActiveLoadout = true;
+            end
         end
     end
     if not foundActiveLoadout then
