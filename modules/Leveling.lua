@@ -46,7 +46,21 @@ function Module:ReapplyLoadout()
     if not loadoutInfo then return end
 
     self:Print("Automatically re-applying loadout", loadoutInfo.displayName, ", go to /TLM to disable this behavior.");
+    local mapBefore = self:GetSpellIDMap();
     CharacterAPI:LoadLoadout(loadoutID, true);
+    local mapAfter = self:GetSpellIDMap();
+
+    if mapBefore and mapAfter then
+        for spellID, rankAfter in pairs(mapAfter) do
+            if mapBefore[spellID] ~= rankAfter then
+                if (mapBefore[spellID] or 0) == 0 then
+                    self:Print("New Talent Learned:", C_Spell.GetSpellLink(spellID));
+                else
+                    self:Print("Talent Upgraded:", C_Spell.GetSpellLink(spellID), "to rank", rankAfter);
+                end
+            end
+        end
+    end
 end
 
 function Module:AddToCombatLockdownQueue(func, ...)
@@ -65,4 +79,32 @@ function Module:PLAYER_REGEN_ENABLED()
         item.func(unpack(item.args));
     end
     wipe(self.CombatLockdownQueue);
+end
+
+function Module:GetSpellIDMap()
+    local map = {}
+
+    local configID = C_ClassTalents.GetActiveConfigID()
+    if configID == nil then return end
+
+    local configInfo = C_Traits.GetConfigInfo(configID)
+    if configInfo == nil then return end
+
+    for _, treeID in ipairs(configInfo.treeIDs) do
+        local nodes = C_Traits.GetTreeNodes(treeID)
+        for _, nodeID in ipairs(nodes) do
+            local nodeInfo = C_Traits.GetNodeInfo(configID, nodeID)
+            for _, entryID in ipairs(nodeInfo.entryIDs) do
+                local entryInfo = C_Traits.GetEntryInfo(configID, entryID)
+                if entryInfo and entryInfo.definitionID then
+                    local definitionInfo = C_Traits.GetDefinitionInfo(entryInfo.definitionID)
+                    if definitionInfo.spellID then
+                        map[definitionInfo.spellID] = nodeInfo.activeRank
+                    end
+                end
+            end
+        end
+    end
+
+    return map
 end

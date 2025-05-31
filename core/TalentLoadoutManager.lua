@@ -21,7 +21,7 @@ local SERIALIZATION_VALUE_SEPARATOR = ns.SERIALIZATION_VALUE_SEPARATOR;
 if not _G.TLM then _G.TLM = TLM; end
 --@end-debug@
 
---- @type TLM_ImportExportV1|TLM_ImportExportV2
+--- @type TLM_ImportExportV2
 local ImportExport = ns.ImportExport;
 
 --- @type TLM_IcyVeinsImport
@@ -281,21 +281,11 @@ function TLM:GetActiveBlizzardLoadoutConfigID()
     if not self.playerSpecID then return nil; end
 
     local lastSelected = C_ClassTalents.GetLastSelectedSavedConfigID(self.playerSpecID);
-    local selectionID =
-        (
-            ClassTalentFrame
-            and ClassTalentFrame.TalentsTab
-            and ClassTalentFrame.TalentsTab.LoadoutDropDown
-            and ClassTalentFrame.TalentsTab.LoadoutDropDown.GetSelectionID
-            and ClassTalentFrame.TalentsTab.LoadoutDropDown:GetSelectionID()
-        )
-        or (
-            PlayerSpellsFrame
-            and PlayerSpellsFrame.TalentsFrame
-            and PlayerSpellsFrame.TalentsFrame.LoadSystem
-            and PlayerSpellsFrame.TalentsFrame.LoadSystem.GetSelectionID
-            and PlayerSpellsFrame.TalentsFrame.LoadSystem:GetSelectionID()
-        );
+    local selectionID = PlayerSpellsFrame
+        and PlayerSpellsFrame.TalentsFrame
+        and PlayerSpellsFrame.TalentsFrame.LoadSystem
+        and PlayerSpellsFrame.TalentsFrame.LoadSystem.GetSelectionID
+        and PlayerSpellsFrame.TalentsFrame.LoadSystem:GetSelectionID();
 
     return selectionID or lastSelected or C_ClassTalents.GetActiveConfigID() or nil;
 end
@@ -849,8 +839,7 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
         self:Print("Failed to commit loadout.");
         return false;
     end
-    --- @type Frame|nil
-    local talentsTab = ClassTalentFrame and ClassTalentFrame.TalentsTab; ---@diagnostic disable-line: undefined-global
+    local talentsTab = PlayerSpellsFrame and PlayerSpellsFrame.TalentsFrame
     local talentsTabIsVisible = talentsTab and talentsTab.IsVisible and talentsTab:IsVisible();
     if autoApply and talentsTab and talentsTabIsVisible then
         local stagedNodes = C_Traits.GetStagedPurchases(activeConfigID);

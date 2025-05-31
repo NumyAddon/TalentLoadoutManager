@@ -25,9 +25,9 @@ function Module:UpdateCurrentConfigID()
         or (C_ClassTalents.GetStarterBuildActive() and starterConfigID);
 end
 
---- @return FRAME?
+--- @return PlayerSpellsFrame_TalentsFrame|nil
 function Module:GetTalentFrame()
-    return (ClassTalentFrame and ClassTalentFrame.TalentsTab) or (PlayerSpellsFrame and PlayerSpellsFrame.TalentsFrame);
+    return PlayerSpellsFrame and PlayerSpellsFrame.TalentsFrame;
 end
 
 function Module:TryRefreshTalentUI()
