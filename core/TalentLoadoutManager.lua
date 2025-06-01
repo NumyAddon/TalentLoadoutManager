@@ -842,9 +842,13 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
     local talentsTab = PlayerSpellsFrame and PlayerSpellsFrame.TalentsFrame
     local talentsTabIsVisible = talentsTab and talentsTab.IsVisible and talentsTab:IsVisible();
     if autoApply and talentsTab and talentsTabIsVisible then
-        local stagedNodes = C_Traits.GetStagedPurchases(activeConfigID);
-        if next(stagedNodes) then
-            talentsTab.stagedPurchaseNodes = C_Traits.GetStagedPurchases(activeConfigID);
+        local stagedPurchases, _, stagedSelectionSwaps = C_Traits.GetStagedChanges(activeConfigID);
+        if stagedPurchases and #stagedPurchases > 0 then
+            local allGainedNodes = stagedPurchases or {};
+            if stagedSelectionSwaps and #stagedSelectionSwaps > 0 then
+                tAppendAll(allGainedNodes, stagedSelectionSwaps);
+            end
+            talentsTab.stagedPurchaseNodes = allGainedNodes;
             talentsTab:SetCommitVisualsActive(true, TalentFrameBaseMixin.VisualsUpdateReasons.CommitOngoing, true);
         end
     end
