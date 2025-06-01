@@ -94,12 +94,12 @@ function Module:GetSpellIDMap()
         local nodes = C_Traits.GetTreeNodes(treeID)
         for _, nodeID in ipairs(nodes) do
             local nodeInfo = C_Traits.GetNodeInfo(configID, nodeID)
-            for _, entryID in ipairs(nodeInfo.entryIDs) do
-                local entryInfo = C_Traits.GetEntryInfo(configID, entryID)
+            if nodeInfo.activeEntry and nodeInfo.activeEntry.entryID and nodeInfo.activeEntry.rank > 0 then
+                local entryInfo = C_Traits.GetEntryInfo(configID, nodeInfo.activeEntry.entryID)
                 if entryInfo and entryInfo.definitionID then
                     local definitionInfo = C_Traits.GetDefinitionInfo(entryInfo.definitionID)
                     if definitionInfo.spellID then
-                        map[definitionInfo.spellID] = nodeInfo.activeRank
+                        map[definitionInfo.spellID] = nodeInfo.activeEntry.rank
                     end
                 end
             end
