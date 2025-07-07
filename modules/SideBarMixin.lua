@@ -337,8 +337,10 @@ function SideBarMixin:UpdatePosition(frame)
         local point, relativeTo, relativePoint, foundXOffset;
         point, relativeTo, relativePoint, foundXOffset, yOffset = frame:GetPoint(1);
         replacePoint = false;
-        if point == "TOP" and relativeTo == UIParent and relativePoint == "TOP"
-                and (foundXOffset == 0 or ((foundXOffset - (xOffset * -1))) < 1) then
+        if
+            point == "TOP" and relativeTo == UIParent and relativePoint == "TOP"
+            and (foundXOffset == 0 or ((foundXOffset - (xOffset * -1))) < 1)
+        then
             replacePoint = true;
         end
     end
