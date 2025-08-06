@@ -36,28 +36,35 @@ function SideBarMixin:OnInitialize()
         button1 = OKAY,
         button2 = CANCEL,
         hasEditBox = true,
+        --- @param dialog StaticPopupTemplate
         --- @param data TLM_SideBarLoadoutInfo
-        OnShow = function (dialog, data)
-            dialog.editBox:SetText(data.name);
-            dialog.editBox:HighlightText();
-            dialog.editBox:SetScript("OnEscapePressed", function()
+        OnShow = function(dialog, data)
+            --- @type StaticPopupTemplate_EditBox
+            local editBox = dialog:GetEditBox();
+            editBox:SetText(data.name);
+            editBox:HighlightText();
+            editBox:SetScript("OnEscapePressed", function()
                 dialog:Hide();
             end);
-            dialog.editBox:SetScript("OnEnterPressed", function()
-                dialog.button1:Click();
+            editBox:SetScript("OnEnterPressed", function()
+                dialog:GetButtons()[1]:Click();
             end);
         end,
+        --- @param dialog StaticPopupTemplate
         --- @param data TLM_SideBarLoadoutInfo
         OnAccept = function(dialog, data)
-            local newName = dialog.editBox:GetText();
+            local newName = dialog:GetEditBox():GetText();
             GlobalAPI:RenameLoadout(data.id, newName);
             dialog:Hide();
         end,
-        EditBoxOnTextChanged = function (self)
+        --- @param self StaticPopupTemplate_EditBox
+        EditBoxOnTextChanged = function(self)
+            --- @type StaticPopupTemplate
+            local dialog = self:GetParent();
             if self:GetText() == "" then
-                self:GetParent().button1:Disable();
+                dialog:GetButtons()[1]:Disable();
             else
-                self:GetParent().button1:Enable();
+                dialog:GetButtons()[1]:Enable();
             end
         end,
         timeout = 0,
@@ -72,24 +79,31 @@ function SideBarMixin:OnInitialize()
         button1 = OKAY,
         button2 = CANCEL,
         hasEditBox = true,
-        OnShow = function (dialog)
-            dialog.editBox:SetScript("OnEscapePressed", function()
+        --- @param dialog StaticPopupTemplate
+        OnShow = function(dialog)
+            --- @type StaticPopupTemplate_EditBox
+            local editBox = dialog:GetEditBox();
+            editBox:SetScript("OnEscapePressed", function()
                 dialog:Hide();
             end);
-            dialog.editBox:SetScript("OnEnterPressed", function()
-                dialog.button1:Click();
+            editBox:SetScript("OnEnterPressed", function()
+                dialog:GetButtons()[1]:Click();
             end);
         end,
+        --- @param dialog StaticPopupTemplate
         OnAccept = function(dialog)
-            local name = dialog.editBox:GetText();
+            local name = dialog:GetEditBox():GetText();
             self:DoCreate(name)
             dialog:Hide();
         end,
-        EditBoxOnTextChanged = function (self)
+        --- @param self StaticPopupTemplate_EditBox
+        EditBoxOnTextChanged = function(self)
+            --- @type StaticPopupTemplate
+            local dialog = self:GetParent();
             if self:GetText() == "" then
-                self:GetParent().button1:Disable();
+                dialog:GetButtons()[1]:Disable();
             else
-                self:GetParent().button1:Enable();
+                dialog:GetButtons()[1]:Enable();
             end
         end,
         timeout = 0,
@@ -103,6 +117,7 @@ function SideBarMixin:OnInitialize()
         text = "Delete loadout (%s)?",
         button1 = OKAY,
         button2 = CANCEL,
+        --- @param dialog StaticPopupTemplate
         --- @param data TLM_SideBarLoadoutInfo
         OnAccept = function(dialog, data)
             GlobalAPI:DeleteLoadout(data.id);
@@ -119,6 +134,7 @@ function SideBarMixin:OnInitialize()
         text = "Remove loadout from list (%s)?",
         button1 = OKAY,
         button2 = CANCEL,
+        --- @param dialog StaticPopupTemplate
         --- @param data TLM_SideBarLoadoutInfo
         OnAccept = function(dialog, data)
             GlobalAPI:RemoveLoadoutFromStorage(data.id);
@@ -135,6 +151,7 @@ function SideBarMixin:OnInitialize()
         text = "Remove all loadouts from %s from the list?",
         button1 = OKAY,
         button2 = CANCEL,
+        --- @param dialog StaticPopupTemplate
         --- @param data TLM_SideBarLoadoutInfo
         OnAccept = function(dialog, data)
             self:RemoveAllLoadoutsByOwner(data.owner);
@@ -150,21 +167,24 @@ function SideBarMixin:OnInitialize()
     StaticPopupDialogs[self.copyDialogName] = {
         text = "CTRL-C to copy",
         button1 = CLOSE,
+        --- @param dialog StaticPopupTemplate
         --- @param data string
         OnShow = function(dialog, data)
             local function HidePopup()
                 dialog:Hide();
             end
-            dialog.editBox:SetScript("OnEscapePressed", HidePopup);
-            dialog.editBox:SetScript("OnEnterPressed", HidePopup);
-            dialog.editBox:SetScript("OnKeyUp", function(_, key)
-                if IsControlKeyDown() and key == "C" then
+            --- @type StaticPopupTemplate_EditBox
+            local editBox = dialog:GetEditBox();
+            editBox:SetScript("OnEscapePressed", HidePopup);
+            editBox:SetScript("OnEnterPressed", HidePopup);
+            editBox:SetScript("OnKeyUp", function(_, key)
+                if IsControlKeyDown() and (key == 'C' or key == 'X') then
                     HidePopup();
                 end
             end);
-            dialog.editBox:SetMaxLetters(0);
-            dialog.editBox:SetText(data);
-            dialog.editBox:HighlightText();
+            editBox:SetMaxLetters(0);
+            editBox:SetText(data);
+            editBox:HighlightText();
         end,
         hasEditBox = true,
         editBoxWidth = 240,
@@ -180,10 +200,8 @@ function SideBarMixin:OnInitialize()
         button1 = OKAY,
         button2 = nil,
         timeout = 0,
-        OnAccept = function()
-        end,
-        OnCancel = function()
-        end,
+        OnAccept = function() end,
+        OnCancel = function() end,
         whileDead = true,
         hideOnEscape = true,
         preferredIndex = 3,
