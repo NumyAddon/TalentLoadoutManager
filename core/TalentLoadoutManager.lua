@@ -120,9 +120,9 @@ function TLM:TRAIT_CONFIG_LIST_UPDATED()
     self:RegisterEvent("PLAYER_ENTERING_WORLD");
 end
 
-function TLM:TRAIT_CONFIG_UPDATED()
+function TLM:TRAIT_CONFIG_UPDATED(_, configID)
     RunNextFrame(function()
-        self:UpdateBlizzardLoadouts();
+        self:UpdateBlizzardLoadout(configID);
     end);
 end
 
