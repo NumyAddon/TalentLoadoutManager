@@ -17,25 +17,60 @@ TLM.LevelingModule = Module;
 
 Module.CombatLockdownQueue = {};
 
+function Module:OnInitialize()
+    self.listener = CreateFrame("Frame");
+    self.listener.Reset = function(listener)
+        listener.PLAYER_LEVEL_UP = false;
+        listener.TRAIT_TREE_CURRENCY_INFO_UPDATED = false;
+        listener.elapsed = 0;
+        listener:Hide();
+    end
+    self.listener:Reset();
+    self.listener:SetScript("OnUpdate", function(listener, elapsed)
+        listener.elapsed = listener.elapsed + elapsed;
+        if listener.elapsed > 5 then
+            listener:Reset();
+            return;
+        end
+        if listener.PLAYER_LEVEL_UP and listener.TRAIT_TREE_CURRENCY_INFO_UPDATED then
+            listener:Reset();
+            if InCombatLockdown() then
+                self:AddToCombatLockdownQueue(self.ReapplyLoadout, self);
+                return;
+            end
+            RunNextFrame(function()
+                self:ReapplyLoadout();
+            end);
+        end
+    end);
+
+end
+
 function Module:OnEnable()
-    self:RegisterEvent("PLAYER_LEVEL_UP");
+    self:RegisterEvent("PLAYER_LEVEL_UP", "OnEvent");
+    self:RegisterEvent("TRAIT_TREE_CURRENCY_INFO_UPDATED", "OnEvent");
 end
 
 function Module:OnDisable()
     self:UnregisterEvent("PLAYER_LEVEL_UP");
+    self:UnregisterEvent("TRAIT_TREE_CURRENCY_INFO_UPDATED");
+    self.listener:Reset();
 end
 
-function Module:PLAYER_LEVEL_UP(_, level)
+function Module:OnEvent(event, ...)
     if not Config:GetConfig("autoApplyOnLevelUp") then return; end
-    if level >= 10 then
-        if InCombatLockdown() then
-            self:AddToCombatLockdownQueue(self.ReapplyLoadout, self);
-            return;
-        end
-        RunNextFrame(function()
-            self:ReapplyLoadout();
-        end);
+    if event == "PLAYER_LEVEL_UP" then
+        local level = ...;
+        if level < 10 then return; end
+    elseif event == "TRAIT_TREE_CURRENCY_INFO_UPDATED" then
+        local treeID = ...;
+        local specID = PlayerUtil.GetCurrentSpecID();
+        if not specID then return; end
+        local playerTreeID = C_ClassTalents.GetTraitTreeForSpec(specID);
+        if treeID ~= playerTreeID then return; end
     end
+    self.listener:Show();
+    self.listener[event] = true;
 end
 
 function Module:ReapplyLoadout()
