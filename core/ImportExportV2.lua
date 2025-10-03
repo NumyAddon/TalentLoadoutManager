@@ -39,7 +39,7 @@ end
 local specToClassMap = {};
 do
     for classID = 1, GetNumClasses() do
-        for specIndex = 1, GetNumSpecializationsForClassID(classID) do
+        for specIndex = 1, C_SpecializationInfo.GetNumSpecializationsForClassID(classID) do
             specToClassMap[(GetSpecializationInfoForClassID(classID, specIndex))] = classID;
         end
     end

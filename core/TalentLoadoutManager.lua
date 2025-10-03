@@ -390,7 +390,7 @@ end
 
 function TLM:GetBlizzardLoadoutSpec(configID)
     for index = 1, GetNumSpecializations() do
-        local specID = GetSpecializationInfo(index);
+        local specID = C_SpecializationInfo.GetSpecializationInfo(index);
         for _, specConfigID in pairs(C_ClassTalents.GetConfigIDsBySpecID(specID)) do
             if specConfigID == configID then
                 return specID;
@@ -403,7 +403,7 @@ function TLM:UpdateBlizzardLoadouts()
     local classID = self.playerClassID;
     self.db.blizzardLoadouts[classID] = self.db.blizzardLoadouts[classID] or {};
     for index = 1, GetNumSpecializations() do
-        local specID = GetSpecializationInfo(index);
+        local specID = C_SpecializationInfo.GetSpecializationInfo(index);
         self.db.blizzardLoadouts[classID][specID] = self.db.blizzardLoadouts[classID][specID] or {};
         if self.db.blizzardLoadouts[classID][specID][self.playerName] then
             for configID, _ in pairs(self.db.blizzardLoadouts[classID][specID][self.playerName]) do
