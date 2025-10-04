@@ -1,5 +1,8 @@
 local addonName, ns = ...;
 
+local ChatEdit_InsertLink = ChatFrameUtil and ChatFrameUtil.InsertLink or ChatEdit_InsertLink
+local ChatFrame_OpenChat = ChatFrameUtil and ChatFrameUtil.OpenChat or ChatFrame_OpenChat
+
 --- @class TLM_SideBarMixin: AceModule, AceHook-3.0
 local SideBarMixin = {};
 ns.SideBarMixin = SideBarMixin;
