@@ -123,6 +123,10 @@ end
 function TLM:TRAIT_CONFIG_UPDATED(_, configID)
     RunNextFrame(function()
         self:UpdateBlizzardLoadout(configID);
+        if configID == C_ClassTalents.GetActiveConfigID() then
+            self:DiscoverNewLoadouts();
+            self:TriggerEvent(self.Event.LoadoutListUpdated);
+        end
     end);
 end
 
@@ -420,6 +424,18 @@ function TLM:UpdateBlizzardLoadouts()
         end
     end
     self:TriggerEvent(self.Event.LoadoutListUpdated);
+end
+
+function TLM:DiscoverNewLoadouts()
+    local classID = self.playerClassID;
+    for index = 1, GetNumSpecializations() do
+        local specID = C_SpecializationInfo.GetSpecializationInfo(index);
+        for _, configID in pairs(C_ClassTalents.GetConfigIDsBySpecID(specID)) do
+            if not self.db.blizzardLoadouts[classID][specID][self.playerName][configID] then
+                self:UpdateBlizzardLoadout(configID);
+            end
+        end
+    end
 end
 
 function TLM:UpdateBlizzardLoadout(configID, specID)
