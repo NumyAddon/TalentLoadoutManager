@@ -218,8 +218,7 @@ function TLM:DetectDeletedParents()
             local parentConfigID = loadoutInfo.parentMapping and loadoutInfo.parentMapping[self.playerName] or nil;
             if parentConfigID and not self.cache.loadoutByID[parentConfigID] then
                 loadoutInfo.parentMapping[self.playerName] = nil;
-                self.cache.loadoutByID[loadoutID].parentMapping = self:GetParentMappingForLoadout(loadoutInfo,
-                    loadoutInfo.specID);
+                self.cache.loadoutByID[loadoutID].parentMapping = self:GetParentMappingForLoadout(loadoutInfo, loadoutInfo.specID);
                 anyDeleted = true;
             end
         end
@@ -383,8 +382,7 @@ function TLM:IsChoiceNode(nodeID)
     if configID == nil or nodeID == nil then return; end
 
     local nodeInfo = C_Traits.GetNodeInfo(configID, nodeID);
-    return nodeInfo and
-    (Enum.TraitNodeType.Selection == nodeInfo.type or Enum.TraitNodeType.SubTreeSelection == nodeInfo.type);
+    return nodeInfo and (Enum.TraitNodeType.Selection == nodeInfo.type or Enum.TraitNodeType.SubTreeSelection == nodeInfo.type);
 end
 
 --- @return number incremented unique ID
@@ -447,8 +445,7 @@ function TLM:UpdateBlizzardLoadout(configID, specID)
 
     self.db.blizzardLoadouts[classID] = self.db.blizzardLoadouts[classID] or {};
     self.db.blizzardLoadouts[classID][specID] = self.db.blizzardLoadouts[classID][specID] or {};
-    self.db.blizzardLoadouts[classID][specID][self.playerName] = self.db.blizzardLoadouts[classID][specID]
-    [self.playerName] or {};
+    self.db.blizzardLoadouts[classID][specID][self.playerName] = self.db.blizzardLoadouts[classID][specID][self.playerName] or {};
 
     local configInfo = C_Traits.GetConfigInfo(configID);
     if not configInfo or configInfo.type ~= Enum.TraitConfigType.Combat then return; end
@@ -654,24 +651,20 @@ function TLM:LoadoutInfoToEntryInfo(loadoutInfo)
             for _, entryID in pairs(nodeInfo.entryIDs) do
                 if entryID == loadoutNodeInfo.entryID then
                     nodeInfoExists = true;
-                    isChoiceNode = Enum.TraitNodeType.Selection == nodeInfo.type or
-                    Enum.TraitNodeType.SubTreeSelection == nodeInfo.type;
+                    isChoiceNode = Enum.TraitNodeType.Selection == nodeInfo.type or Enum.TraitNodeType.SubTreeSelection == nodeInfo.type;
                     break;
                 else
                     local nodeEntryInfo = C_Traits.GetEntryInfo(configID, entryID);
-                    local definitionInfo = nodeEntryInfo and nodeEntryInfo.definitionID and
-                    C_Traits.GetDefinitionInfo(nodeEntryInfo.definitionID);
+                    local definitionInfo = nodeEntryInfo and nodeEntryInfo.definitionID and C_Traits.GetDefinitionInfo(nodeEntryInfo.definitionID);
                     if definitionInfo and definitionInfo.spellID == loadoutNodeInfo.spellID then
                         nodeInfoExists = true;
                         loadoutNodeInfo.entryID = entryID;
-                        isChoiceNode = Enum.TraitNodeType.Selection == nodeInfo.type or
-                        Enum.TraitNodeType.SubTreeSelection == nodeInfo.type;
+                        isChoiceNode = Enum.TraitNodeType.Selection == nodeInfo.type or Enum.TraitNodeType.SubTreeSelection == nodeInfo.type;
                         break;
                     elseif nodeEntryInfo and nodeEntryInfo.subTreeID == loadoutNodeInfo.spellID then
                         nodeInfoExists = true;
                         loadoutNodeInfo.entryID = entryID;
-                        isChoiceNode = Enum.TraitNodeType.Selection == nodeInfo.type or
-                        Enum.TraitNodeType.SubTreeSelection == nodeInfo.type;
+                        isChoiceNode = Enum.TraitNodeType.Selection == nodeInfo.type or Enum.TraitNodeType.SubTreeSelection == nodeInfo.type;
                         break;
                     end
                 end
@@ -680,8 +673,7 @@ function TLM:LoadoutInfoToEntryInfo(loadoutInfo)
 
         local nodeID, entryID = loadoutNodeInfo.nodeID, loadoutNodeInfo.entryID;
         if not nodeInfoExists then
-            nodeID, entryID = self:GetNodeAndEntryBySpellID(loadoutNodeInfo.spellID, self.playerClassID,
-                self.playerSpecID);
+            nodeID, entryID = self:GetNodeAndEntryBySpellID(loadoutNodeInfo.spellID, self.playerClassID, self.playerSpecID);
             isChoiceNode = self:IsChoiceNode(nodeID) or false;
         end
         if nodeID and entryID then
@@ -949,8 +941,7 @@ function TLM:PurchaseLoadoutEntryInfo(treeID, configID, loadoutEntryInfo, entrie
             end
         end
         -- first purchase anything not mentioned in the leveling order, basically a baseline loadout
-        removed = removed +
-        (next(notMentionedInLevelingOrder) and self:PurchaseOrderedEntries(orderedNodes, configID, notMentionedInLevelingOrder) or 0);
+        removed = removed + (next(notMentionedInLevelingOrder) and self:PurchaseOrderedEntries(orderedNodes, configID, notMentionedInLevelingOrder) or 0);
 
         for level = 10, ns.MAX_LEVEL do
             local entries = entriesByLevel[level] or {};
@@ -1080,8 +1071,7 @@ function TLM:CreateCustomLoadoutFromImportString(importString, autoApply, name, 
     if validateClassAndSpec then
         classIDOrNil, specIDOrNil = self.playerClassID, self.playerSpecID;
     end
-    local selectedNodes, errorOrLevelingOrder, classID, specID = self:BuildSerializedSelectedNodesFromImportString(
-    importString, classIDOrNil, specIDOrNil);
+    local selectedNodes, errorOrLevelingOrder, classID, specID = self:BuildSerializedSelectedNodesFromImportString(importString, classIDOrNil, specIDOrNil);
     if selectedNodes then
         --- @type TLM_LoadoutInfo_partial
         local loadoutInfo = {
@@ -1248,11 +1238,9 @@ function TLM:ExportLoadoutToString(classID, specID, loadoutInfo, excludeLeveling
     local key = loadoutInfo.selectedNodes .. '-LVL-' .. (loadoutInfo.levelingOrder or '');
     if not self.cache.exportStrings[classID][specID][key] then
         local deserialized = self:DeserializeLoadout(loadoutInfo.selectedNodes);
-        local deserializedLevelingOrder = not excludeLevelingString and loadoutInfo.levelingOrder and
-        self:DeserializeLevelingOrder(loadoutInfo.levelingOrder) or nil;
+        local deserializedLevelingOrder = not excludeLevelingString and loadoutInfo.levelingOrder and self:DeserializeLevelingOrder(loadoutInfo.levelingOrder) or nil;
 
-        self.cache.exportStrings[classID][specID][key] = ImportExport:ExportLoadoutToString(classID, specID, deserialized,
-            deserializedLevelingOrder);
+        self.cache.exportStrings[classID][specID][key] = ImportExport:ExportLoadoutToString(classID, specID, deserialized, deserializedLevelingOrder);
     end
 
     return self.cache.exportStrings[classID][specID][key];
@@ -1285,8 +1273,7 @@ function TLM:CheckForBadAddons(printToChat)
         and ZygorGuidesViewer.db.profile
         and ZygorGuidesViewer.db.profile.talenton
     then
-        badAddons['ZygorGuidesViewer'] =
-        'Zygor Guides\' talent advisor is enabled. This is known to cause game freezes when changing loadouts. Disable this feature and report it to the author of Zygor Guides.';
+        badAddons['ZygorGuidesViewer'] = 'Zygor Guides\' talent advisor is enabled. This is known to cause game freezes when changing loadouts. Disable this feature and report it to the author of Zygor Guides.';
     end
 
     if printToChat then
