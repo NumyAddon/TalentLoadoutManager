@@ -7,8 +7,8 @@ TLM._ns = ns;
 
 _G.TalentLoadoutManager = TLM;
 
-local BLIZZ_ATLAS = CreateAtlasMarkup("gmchat-icon-blizz", 16, 16);
-local XP_ATLAS = CreateAtlasMarkup("GarrMission_CurrencyIcon-Xp", 16, 16);
+local BLIZZ_ATLAS = CreateAtlasMarkup("gmchat-icon-blizz", 16, 16) .. " ";
+local XP_ATLAS = CreateAtlasMarkup("GarrMission_CurrencyIcon-Xp", 16, 16) .. " ";
 
 ns.SERIALIZATION_NODE_SEPARATOR = "\n";
 --- format: nodeID_entryID_spellIDOrSubTreeID_rank

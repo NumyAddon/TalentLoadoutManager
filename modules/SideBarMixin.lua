@@ -27,7 +27,7 @@ local SETTING_SUFFIX_COLLAPSED = "_Collapsed";
 local SETTING_SUFFIX_ANCHOR_LOCATION = "_AnchorLocation";
 local ANCHOR_LEFT = 0;
 local ANCHOR_RIGHT = 1;
-local LOCK_MARKUP = CreateAtlasMarkup("AdventureMapIcon-Lock", 16, 16);
+local LOCK_MARKUP = CreateAtlasMarkup("AdventureMapIcon-Lock", 16, 16) .. " ";
 
 function SideBarMixin:OnInitialize()
     local loadoutNameSubText = "Anything before the first '||' character will not display. This allows you to sort loadouts by adding a prefix.";
@@ -748,7 +748,7 @@ function SideBarMixin:CreateScrollBox(parentContainer)
         end
         local text = entry.text;
         if entry.data.isLocked then
-            text = LOCK_MARKUP .. " " .. text;
+            text = LOCK_MARKUP .. text;
         end
         if entry.parentID then
             text = "  ||  " .. text;
