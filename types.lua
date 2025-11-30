@@ -80,20 +80,6 @@
 
 --- @class TLM_ElementFrame: Button
 
---- @alias TLM_ConfigOptions
----|"autoApplyOnLevelUp"
----|"autoScale"
----|"autoPosition"
----|"autoApply"
----|"integrateWithSimc"
----|"sideBarBackgroundColor"
----|"sideBarActiveElementTextColor"
----|"sideBarActiveElementBackgroundColor"
----|"sideBarActiveElementHighlightBackgroundColor"
----|"sideBarInactiveElementTextColor"
----|"sideBarInactiveElementBackgroundColor"
----|"sideBarInactiveElementHighlightBackgroundColor"
-
 -------------------
 ----- FrameXML ----
 -------------------

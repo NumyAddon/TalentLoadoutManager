@@ -19,26 +19,37 @@ Config.sideBarColorOptionKeys = {
 };
 
 function Config:Initialize()
-    -- when adding options, remember to add them to types.lua (TLM_ConfigOptions) as well
+    --- @class TLM_Config
+    --- @enum (key) TLM_ConfigOptions
     self.defaultConfig = {
         autoApplyOnLevelUp = true,
         autoScale = true,
         autoPosition = true,
         autoApply = true,
         integrateWithSimc = true,
+        characterVisibility = {},
+
         sideBarBackgroundColor = { r = 0, g = 0, b = 0, a = 0.8 },
+
         sideBarActiveElementTextColor = { r = 1, g = 1, b = 1, a = 1 },
-        sideBarActiveElementBackgroundColor = { r = 0.2, g = 0.2, b = 0.2, a = 0.5 },
+        sideBarActiveElementBackgroundColor = { r = 0.08, g = 0.5, b = 0.17, a = 0.5 },
         sideBarActiveElementHighlightBackgroundColor = { r = 0.5, g = 0.5, b = 0.5, a = 0.5 },
+
         sideBarInactiveElementTextColor = { r = 1, g = 1, b = 1, a = 1 },
         sideBarInactiveElementBackgroundColor = { r = 0, g = 0, b = 0, a = 0.5 },
         sideBarInactiveElementHighlightBackgroundColor = { r = 0.5, g = 0.5, b = 0.5, a = 0.5 },
-        characterVisibility = {},
     };
     for key, value in pairs(self.defaultConfig) do
         if TLM.db.config[key] == nil then
             TLM.db.config[key] = value;
         end
+    end
+    if not TLM.db.config._changedActiveElementBackgroundToGreen then
+        local color = TLM.db.config.sideBarActiveElementBackgroundColor;
+        if color.r == 0.2 and color.g == 0.2 and color.b == 0.2 and color.a == 0.5 then
+            TLM.db.config.sideBarActiveElementBackgroundColor = self.defaultConfig.sideBarActiveElementBackgroundColor;
+        end
+        TLM.db.config._changedActiveElementBackgroundToGreen = true;
     end
 
     Mixin(self, CallbackRegistryMixin);
@@ -50,6 +61,7 @@ end
 
 function Config:GetOptions()
     local function GetColor(info)
+        --- @type ColorRGBAData
         local color = self:GetConfig(info[#info]);
         return color.r, color.g, color.b, color.a;
     end
