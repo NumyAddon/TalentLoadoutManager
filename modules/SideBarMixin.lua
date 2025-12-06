@@ -242,7 +242,7 @@ function SideBarMixin:SetupHook()
 end
 
 do
-    --- @return PlayerSpellsFrame_TalentsFrame|TalentViewerUIMixinTWW
+    --- @return PlayerSpellsFrame_TalentsFrame|TalentViewer_ClassTalentsFrameTemplate
     function SideBarMixin:GetTalentsTab()
         error('override in implementation');
     end
