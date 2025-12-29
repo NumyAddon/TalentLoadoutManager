@@ -25,8 +25,10 @@ SideBarMixin.ShowShowInTTV = false;
 local LEVEL_CAP = 70;
 local SETTING_SUFFIX_COLLAPSED = "_Collapsed";
 local SETTING_SUFFIX_ANCHOR_LOCATION = "_AnchorLocation";
-local ANCHOR_LEFT = 0;
-local ANCHOR_RIGHT = 1;
+local ANCHOR_LEFT_OUTER = 0;
+local ANCHOR_RIGHT_OUTER = 1;
+local ANCHOR_LEFT_INNER = 2;
+local ANCHOR_RIGHT_INNER = 3;
 local LOCK_MARKUP = CreateAtlasMarkup("AdventureMapIcon-Lock", 16, 16) .. " ";
 
 function SideBarMixin:OnInitialize()
@@ -350,7 +352,9 @@ function SideBarMixin:UpdatePosition(frame)
     if not Config:GetConfig('autoPosition') then return; end
     if frame:IsProtected() and InCombatLockdown() then return; end
 
-    local offsetDirection = self:GetAnchorLocation() == ANCHOR_LEFT and 1 or -1;
+    local anchorLocation = self:GetAnchorLocation();
+
+    local offsetDirection = (anchorLocation == ANCHOR_LEFT_OUTER and 1) or (anchorLocation == ANCHOR_RIGHT_OUTER and -1) or 0;
     local replacePoint = true;
     local xOffset = (self.SideBar:GetWidth() / 2) * offsetDirection;
     local yOffset = -41;
@@ -514,24 +518,34 @@ function SideBarMixin:CreateImportDialog()
     return dialog;
 end
 
-function SideBarMixin:OnToggleSideBarButtonClick()
+--- @param mouseButton MouseButton
+function SideBarMixin:OnToggleSideBarButtonClick(mouseButton)
     if IsShiftKeyDown() then
-        self:ToggleAnchorLocation();
-        return;
+        local newAnchorMap = {
+            [ANCHOR_LEFT_OUTER] = ANCHOR_RIGHT_OUTER,
+            [ANCHOR_RIGHT_OUTER] = ANCHOR_LEFT_OUTER,
+            [ANCHOR_LEFT_INNER] = ANCHOR_RIGHT_INNER,
+            [ANCHOR_RIGHT_INNER] = ANCHOR_LEFT_INNER,
+        };
+        local anchorLocation = self:GetAnchorLocation();
+        self:SetAnchorLocation(newAnchorMap[anchorLocation] or ANCHOR_LEFT_OUTER);
+    elseif mouseButton == "RightButton" then
+        local newAnchorMap = {
+            [ANCHOR_LEFT_INNER] = ANCHOR_LEFT_OUTER,
+            [ANCHOR_LEFT_OUTER] = ANCHOR_LEFT_INNER,
+            [ANCHOR_RIGHT_INNER] = ANCHOR_RIGHT_OUTER,
+            [ANCHOR_RIGHT_OUTER] = ANCHOR_RIGHT_INNER,
+        };
+        local anchorLocation = self:GetAnchorLocation();
+        self:SetAnchorLocation(newAnchorMap[anchorLocation] or ANCHOR_LEFT_OUTER);
+    else
+        local collapsed = not self:GetCollapsed();
+        Config:SetConfig(self.name .. SETTING_SUFFIX_COLLAPSED, collapsed);
+        self:SetCollapsed(collapsed);
     end
-    local collapsed = not self:GetCollapsed();
-    Config:SetConfig(self.name .. SETTING_SUFFIX_COLLAPSED, collapsed);
-    self:SetCollapsed(collapsed);
 end
 
-function SideBarMixin:ToggleAnchorLocation()
-    local anchorLocation = self:GetAnchorLocation();
-    local newAnchorLocation;
-    if ANCHOR_LEFT == anchorLocation then
-        newAnchorLocation = ANCHOR_RIGHT;
-    else
-        newAnchorLocation = ANCHOR_LEFT;
-    end
+function SideBarMixin:SetAnchorLocation(newAnchorLocation)
     Config:SetConfig(self.name .. SETTING_SUFFIX_ANCHOR_LOCATION, newAnchorLocation);
     self:UpdatePointsForAnchorLocation();
 end
@@ -540,27 +554,39 @@ function SideBarMixin:UpdatePointsForAnchorLocation()
     local talentsTab = self:GetTalentsTab();
     self.SideBar:ClearAllPoints();
     self.SideBar.ToggleSideBarButton:ClearAllPoints();
-    if self:GetAnchorLocation() == ANCHOR_LEFT then
-        self.SideBar:SetPoint('TOPRIGHT', talentsTab, 'TOPLEFT', 0, 0);
+    local anchorLocation = self:GetAnchorLocation();
+    local isLeftSide = anchorLocation == ANCHOR_LEFT_INNER or anchorLocation == ANCHOR_LEFT_OUTER;
+    local isOuter = anchorLocation == ANCHOR_LEFT_OUTER or anchorLocation == ANCHOR_RIGHT_OUTER;
+
+    local sideBarPoint, sideBarRelativePoint;
+    if isLeftSide then
         self.SideBar.ToggleSideBarButton:SetPoint('RIGHT', talentsTab, 'TOPLEFT', 10, -52);
+        sideBarPoint = isOuter and 'TOPRIGHT' or 'TOPLEFT';
+        sideBarRelativePoint = 'TOPLEFT';
     else
-        self.SideBar:SetPoint('TOPLEFT', self:GetTalentsTab(), 'TOPRIGHT', 0, 0);
         self.SideBar.ToggleSideBarButton:SetPoint('LEFT', talentsTab, 'TOPRIGHT', -10, -52);
+        sideBarPoint = isOuter and 'TOPLEFT' or 'TOPRIGHT';
+        sideBarRelativePoint = 'TOPRIGHT';
     end
+
+    self.SideBar:SetPoint(sideBarPoint, talentsTab, sideBarRelativePoint, 0, 0);
     self:SetCollapsed(self:GetCollapsed());
 
     self:UpdatePosition(talentsTab:GetParent());
 end
 
 function SideBarMixin:GetAnchorLocation()
-    return Config:GetConfig(self.name .. SETTING_SUFFIX_ANCHOR_LOCATION, ANCHOR_LEFT);
+    return Config:GetConfig(self.name .. SETTING_SUFFIX_ANCHOR_LOCATION, ANCHOR_LEFT_OUTER);
 end
 
 function SideBarMixin:SetCollapsed(collapsed)
     local sideBar = self.SideBar;
     sideBar:SetShown(not collapsed);
     local anchorLocation = self:GetAnchorLocation();
-    if (not collapsed and ANCHOR_LEFT == anchorLocation) or (collapsed and ANCHOR_RIGHT == anchorLocation) then
+    if
+        (not collapsed and (ANCHOR_LEFT_OUTER == anchorLocation or ANCHOR_RIGHT_INNER == anchorLocation))
+        or (collapsed and (ANCHOR_RIGHT_OUTER == anchorLocation or ANCHOR_LEFT_INNER == anchorLocation))
+    then
         -- arrow pointing right
         sideBar.ToggleSideBarButton:GetNormalTexture():SetTexCoord(0.15625, 0.5, 0.84375, 0.5, 0.15625, 0, 0.84375, 0);
         sideBar.ToggleSideBarButton:GetHighlightTexture():SetTexCoord(0.15625, 1, 0.84375, 1, 0.15625, 0.5, 0.84375, 0.5);
@@ -581,6 +607,7 @@ function SideBarMixin:CreateSideBar()
     local sideBar = CreateFrame("Frame", nil, talentsTab);
     local width = 300;
 
+    sideBar:SetFrameStrata("HIGH");
     sideBar:SetHeight(talentsTab:GetHeight());
     sideBar:SetWidth(width);
     sideBar:SetPoint("TOPRIGHT", talentsTab, "TOPLEFT", 0, 0);
@@ -648,6 +675,7 @@ function SideBarMixin:CreateSideBar()
 
     -- add a expand button
     sideBar.ToggleSideBarButton = CreateFrame("Button", nil, talentsTab, "UIPanelButtonTemplate, UIButtonTemplate");
+    sideBar.ToggleSideBarButton:RegisterForClicks("AnyUp");
     sideBar.ToggleSideBarButton:SetSize(24, 38);
     sideBar.ToggleSideBarButton:SetFrameStrata("HIGH");
     sideBar.ToggleSideBarButton:SetNormalTexture("Interface\\PaperDollInfoFrame\\UI-GearManager-FlyoutButton");
@@ -659,10 +687,12 @@ function SideBarMixin:CreateSideBar()
         GameTooltip:SetOwner(sideBar.ToggleSideBarButton, "ANCHOR_RIGHT");
         GameTooltip:SetText("Toggle Sidebar");
         GameTooltip:AddLine("|cffeda55fShift + Click|r to move the side bar to the other side of the UI.", 1, 1, 1, true);
+        GameTooltip:AddLine("|cffeda55fRight-Click|r to move the side bar to the inside side of the UI.", 1, 1, 1, true);
         GameTooltip:Show();
     end);
-    sideBar.ToggleSideBarButton:SetScript("OnClick", function()
-        self:OnToggleSideBarButtonClick();
+    --- @param mouseButton MouseButton
+    sideBar.ToggleSideBarButton:SetScript("OnClick", function(_, mouseButton)
+        self:OnToggleSideBarButtonClick(mouseButton);
     end);
 
     -- add a scrollbox frame
