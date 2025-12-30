@@ -825,7 +825,7 @@ function SideBarMixin:CreateScrollBox(parentContainer)
     end
 
     ContainerFrame.ScrollView = CreateScrollBoxListLinearView();
-    ContainerFrame.ScrollView:SetElementExtent(20);  -- Fixed height for each row; required as we"re not using XML.
+    ContainerFrame.ScrollView:SetElementExtent(20); -- Fixed height for each row; required as we're not using XML.
     ContainerFrame.ScrollView:SetElementInitializer("Button", OnListElementInitialized);
 
     ScrollUtil.InitScrollBoxWithScrollBar(ContainerFrame.ScrollBox, ContainerFrame.ScrollBar, ContainerFrame.ScrollView)
