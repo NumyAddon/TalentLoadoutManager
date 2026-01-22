@@ -428,10 +428,15 @@ end
 
 function TLM:DiscoverNewLoadouts()
     local classID = self.playerClassID;
+    self.db.blizzardLoadouts[classID] = self.db.blizzardLoadouts[classID] or {};
+    local classLoadouts = self.db.blizzardLoadouts[classID];
     for index = 1, GetNumSpecializations() do
+        --- @type number
         local specID = C_SpecializationInfo.GetSpecializationInfo(index);
+        classLoadouts[specID] = classLoadouts[specID] or {};
+        classLoadouts[specID][self.playerName] = classLoadouts[specID][self.playerName] or {};
         for _, configID in pairs(C_ClassTalents.GetConfigIDsBySpecID(specID)) do
-            if not self.db.blizzardLoadouts[classID][specID][self.playerName][configID] then
+            if not classLoadouts[specID][self.playerName][configID] then
                 self:UpdateBlizzardLoadout(configID);
             end
         end
@@ -444,8 +449,9 @@ function TLM:UpdateBlizzardLoadout(configID, specID)
     if not specID then return; end
 
     self.db.blizzardLoadouts[classID] = self.db.blizzardLoadouts[classID] or {};
-    self.db.blizzardLoadouts[classID][specID] = self.db.blizzardLoadouts[classID][specID] or {};
-    self.db.blizzardLoadouts[classID][specID][self.playerName] = self.db.blizzardLoadouts[classID][specID][self.playerName] or {};
+    local classLoadouts = self.db.blizzardLoadouts[classID];
+    classLoadouts[specID] = classLoadouts[specID] or {};
+    classLoadouts[specID][self.playerName] = classLoadouts[specID][self.playerName] or {};
 
     local configInfo = C_Traits.GetConfigInfo(configID);
     if not configInfo or configInfo.type ~= Enum.TraitConfigType.Combat then return; end
