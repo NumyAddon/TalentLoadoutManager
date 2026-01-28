@@ -337,7 +337,8 @@ function SideBarMixin:OnTalentsTabShow(frame)
 end
 
 function SideBarMixin:UpdateScaleForFit(frame)
-    if not Config:GetConfig('autoScale') then return end
+    if not Config:GetConfig('autoScale') then return; end
+    if frame:IsProtected() and InCombatLockdown() then return; end
 
     local extraHeight = 270;
     local extraWidth = 200 + (self.SideBar:GetWidth() * 1.5);
