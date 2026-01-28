@@ -235,6 +235,10 @@ function Config:RegisterOptions()
 end
 
 function Config:OpenConfig()
+    if C_SettingsUtil and C_SettingsUtil.OpenSettingsPanel and InCombatLockdown() then
+        self:OpenConfigDialog();
+        return;
+    end
     Settings.OpenToCategory(self.categoryID);
 end
 
