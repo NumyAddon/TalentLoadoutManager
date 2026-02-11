@@ -86,6 +86,7 @@ function Module:SetupHook()
     self:ReplaceCopyLoadoutButton(talentsTab);
 
     self:HandleMultiActionBarTaint();
+    self:HandleCastbarTaint(talentsTab);
 end
 
 function Module:OnUpdateInspecting(talentsTab)
@@ -109,8 +110,8 @@ function Module:ReplaceCopyLoadoutButton(talentsTab)
     end);
 end
 
-local function purgeKey(table, key)
-    TextureLoadingGroupMixin.RemoveTexture({textures = table}, key);
+local function setNil(table, key)
+    TextureLoadingGroupMixin.RemoveTexture({ textures = table }, key);
 end
 local function makeFEnvReplacement(original, replacement)
     local fEnv = {};
@@ -146,17 +147,22 @@ function Module:HandleMultiActionBarTaint()
         and not self:IsHooked(microButton, 'HasTalentAlertToShow')
     then
         self:SecureHook(microButton, 'HasTalentAlertToShow', function()
-            purgeKey(microButton, 'canUseTalentUI');
-            purgeKey(microButton, 'canUseTalentSpecUI');
+            setNil(microButton, 'canUseTalentUI');
+            setNil(microButton, 'canUseTalentSpecUI');
         end);
     end
+end
+
+--- @param talentsTab PlayerSpellsFrame_TalentsFrame
+function Module:HandleCastbarTaint(talentsTab)
+    setNil(talentsTab, 'enableCommitCastBar');
 end
 
 function Module:MakeOnHideSafe()
     local talentContainerFrame = self:GetTalentContainerFrame();
     if not issecurevariable(talentContainerFrame, 'lockInspect') then
         if not talentContainerFrame.lockInspect then
-            purgeKey(talentContainerFrame, 'lockInspect');
+            setNil(talentContainerFrame, 'lockInspect');
         else
             -- get blizzard to set the value to true
             TextureLoadingGroupMixin.AddTexture({textures = talentContainerFrame}, 'lockInspect');
@@ -164,14 +170,14 @@ function Module:MakeOnHideSafe()
     end
     local isInspecting = talentContainerFrame:IsInspecting();
     if not issecurevariable(talentContainerFrame, 'inspectUnit') then
-        purgeKey(talentContainerFrame, 'inspectUnit');
+        setNil(talentContainerFrame, 'inspectUnit');
     end
     if not issecurevariable(talentContainerFrame, 'inspectString') then
-        purgeKey(talentContainerFrame, 'inspectString');
+        setNil(talentContainerFrame, 'inspectString');
     end
     if isInspecting then
-        purgeKey(talentContainerFrame, 'inspectString');
-        purgeKey(talentContainerFrame, 'inspectUnit');
+        setNil(talentContainerFrame, 'inspectString');
+        setNil(talentContainerFrame, 'inspectUnit');
         RunNextFrame(function()
             talentContainerFrame:SetInspecting(nil, nil, nil);
         end);
