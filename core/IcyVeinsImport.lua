@@ -24,8 +24,8 @@ local apexTalentLevels = { 81, 84, 87, 90 };
 --- @return boolean
 --- @public
 function IcyVeinsImport:IsTalentUrl(text)
-    -- example URL https://www.icy-veins.com/wow/midnight-talent-calculator#seg1-seg2-seg3-seg4-seg5
-    return not not text:match('^https?://www%.icy%-veins%.com/wow/midnight%-talent%-calculator%#[^-]*%-[^-]*%-[^-]*%-[^-]*%-[^-]*%-?$');
+    -- example URL https://www.icy-veins.com/wow/midnight-talent-calculator#seg1-seg2-seg3-seg4-seg5-seg6
+    return not not text:match('^https?://www%.icy%-veins%.com/wow/midnight%-talent%-calculator%#[^-]*%-[^-]*%-[^-]*%-[^-]*%-[^-]*%-?[^-]*$');
 end
 
 --- @param fullUrl string
@@ -199,7 +199,7 @@ function IcyVeinsImport:ParseDataSegment(dataStream, nodes, treeType)
         nodeIndex = nodeIndex + 1; -- 0-based to 1-based
         local nodeID = nodes[nodeIndex];
         if not nodeID then
-            print(L['Error while importing IcyVeins URL: Could not find node for index'], nodeIndex, '-', treeType);
+            print('Error while importing IcyVeins URL: Could not find node for index', nodeIndex, '-', treeType);
             if DevTool and DevTool.AddData then
                 DevTool:AddData({
                     nodeIndex = nodeIndex,
