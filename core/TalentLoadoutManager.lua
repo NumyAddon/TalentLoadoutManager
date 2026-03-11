@@ -848,10 +848,19 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
     end
     local entriesPurchased = self:ResetAndPurchaseLoadoutEntries(activeConfigID, loadoutEntryInfo, levelingOrder);
     entriesCount = entriesCount - entriesPurchased;
+    local activeSubTreeID = C_ClassTalents.GetActiveHeroTalentSpec();
+    local subTreeCurrencyID;
+    if activeSubTreeID then
+        local subTreeInfo = C_Traits.GetSubTreeInfo(activeConfigID, activeSubTreeID);
+        subTreeCurrencyID = subTreeInfo and subTreeInfo.traitCurrencyID;
+    end
     local currencyInfos = C_Traits.GetTreeCurrencyInfo(activeConfigID, self:GetTreeID(), false);
     local hasAvailableCurrency = false;
-    for _, currencyInfo in pairs(currencyInfos) do
-        hasAvailableCurrency = hasAvailableCurrency or currencyInfo.quantity > 0;
+    for currencyIndex, currencyInfo in pairs(currencyInfos) do
+        if currencyInfo.quantity > 0 and (currencyIndex <= 2 or currencyInfo.traitCurrencyID == subTreeCurrencyID) then
+            hasAvailableCurrency = true;
+            break;
+        end
     end
     if hasAvailableCurrency and entriesCount > 0 then
         self:Print("Failed to fully apply loadout. " .. entriesCount .. " entries could not be purchased.");
