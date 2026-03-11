@@ -1,7 +1,7 @@
 local addonName, ns = ...;
 
---- @class TalentLoadoutManager: AceAddon, AceConsole-3.0, AceEvent-3.0, AceHook-3.0, CallbackRegistryMixin
-local TLM = LibStub("AceAddon-3.0"):NewAddon(addonName, "AceConsole-3.0", "AceEvent-3.0", "AceHook-3.0");
+--- @class TalentLoadoutManager: AceAddon, AceConsole-3.0, NumyAceEvent-3.0, AceHook-3.0, CallbackRegistryMixin
+local TLM = LibStub("AceAddon-3.0"):NewAddon(addonName, "AceConsole-3.0", "NumyAceEvent-3.0", "AceHook-3.0");
 ns.TLM = TLM;
 TLM._ns = ns;
 

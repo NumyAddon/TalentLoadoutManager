@@ -3,8 +3,8 @@ local addonName, ns = ...;
 --- @class TalentLoadoutManager
 local TLM = ns.TLM;
 
---- @class TLM_BlizzardLoadoutChanger: AceModule, AceEvent-3.0
-local Module = TLM:NewModule("BlizzardLoadoutChanger", "AceEvent-3.0");
+--- @class TLM_BlizzardLoadoutChanger: AceModule, NumyAceEvent-3.0
+local Module = TLM:NewModule("BlizzardLoadoutChanger", "NumyAceEvent-3.0");
 TLM.BlizzardLoadoutChanger = Module;
 
 local GetStagedChanges = C_Traits.GetStagedChanges or C_Traits.GetStagedPurchases;
