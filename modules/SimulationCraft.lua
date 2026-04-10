@@ -74,7 +74,7 @@ function Module:PrintSimcProfile()
     for _, loadout in ipairs(GlobalAPI:GetLoadouts()) do
         if not loadout.isBlizzardLoadout or not loadout.playerIsOwner then
             local importString = GlobalAPI:GetExportString(loadout.id, true);
-            local name = C_StringUtil.StripHyperlinks(loadout.name)
+            local name = C_StringUtil.StripHyperlinks(loadout.name);
             customLoadoutsString = string.format(
                 "%s# Saved Loadout: %s\n# talents=%s\n",
                 customLoadoutsString,
