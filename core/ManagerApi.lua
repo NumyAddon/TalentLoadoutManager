@@ -323,5 +323,10 @@ function CharacterAPI:ImportCustomLoadout(importText, loadoutName, autoApply)
     local validateClassAndSpec, load = true, true;
     local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, autoApply, loadoutName, validateClassAndSpec, load);
 
-    return newLoadoutInfo and GlobalAPI:GetLoadoutInfoByID(newLoadoutInfo.id) or false, errorOrNil or 'Could not find newly imported loadout';
+    local info = newLoadoutInfo and GlobalAPI:GetLoadoutInfoByID(newLoadoutInfo.id);
+    if not info then
+        return false, errorOrNil or 'Could not find newly imported loadout';
+    end
+
+    return info, nil;
 end
