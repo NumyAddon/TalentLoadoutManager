@@ -32,6 +32,7 @@ core\TalentLoadoutManager.lua
 core\ReduceTaint.lua
 core\ManagerApi.lua
 core\BlizzardLoadoutChanger.lua
+core\BlizzardLoadoutChangerV2.lua
 core\Config.lua
 
 modules\SideBarMixin.lua

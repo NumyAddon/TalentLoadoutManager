@@ -911,15 +911,32 @@ end
 function TLM:ResetAndPurchaseLoadoutEntries(configID, loadoutEntryInfo, levelingOrder)
     self:CheckForBadAddons(true);
     local totalEntriesRemoved = 0;
-    C_Traits.ResetTree(configID, self:GetTreeID());
     local entriesByLevel = {};
     for _, entry in pairs(levelingOrder or {}) do
         entriesByLevel[entry.level] = entriesByLevel[entry.level] or {};
         table.insert(entriesByLevel[entry.level], entry);
     end
+    local treeID = self:GetTreeID();
+    local nodesToRemove, totalCurrencySpent, totalOperations = self:GetNodeDiff(treeID, configID, loadoutEntryInfo);
+    if UnitLevel("player") ~= ns.MAX_LEVEL or totalOperations > totalCurrencySpent then
+        C_Traits.ResetTree(configID, treeID);
+    else
+        local orderedNodes = self:GetTreeNodes(treeID, true);
+        for _, nodeID in ipairs_reverse(orderedNodes) do
+            if nodesToRemove[nodeID] then
+                if self:IsChoiceNode(nodeID) then
+                    C_Traits.SetSelection(configID, nodeID, nil, false);
+                else
+                    for rank = 1, nodesToRemove[nodeID] do
+                        C_Traits.RefundRank(configID, nodeID, false);
+                    end
+                end
+            end
+        end
+    end
 
     while (true) do
-        local removed = self:PurchaseLoadoutEntryInfo(self:GetTreeID(), configID, loadoutEntryInfo, entriesByLevel);
+        local removed = self:PurchaseLoadoutEntryInfo(treeID, configID, loadoutEntryInfo, entriesByLevel);
         if (0 == removed) then
             break;
         end
@@ -927,6 +944,48 @@ function TLM:ResetAndPurchaseLoadoutEntries(configID, loadoutEntryInfo, leveling
     end
 
     return totalEntriesRemoved;
+end
+
+--- @param treeID number
+--- @param configID number
+--- @param loadoutEntryInfo table<number, TLM_LoadoutEntryInfo> # [nodeID] = entryInfo
+--- @return table<number, number> nodesToRemove - [nodeID] = ranksToRemove
+--- @return number totalCurrencySpent
+--- @return number totalOperations
+function TLM:GetNodeDiff(treeID, configID, loadoutEntryInfo)
+    local nodesToRemove = {};
+    local totalCurrencySpent = 0;
+    local totalOperations = 0;
+
+    local orderedNodes = self:GetTreeNodes(treeID, true);
+    for _, nodeID in ipairs(orderedNodes) do
+        local nodeEntry = loadoutEntryInfo[nodeID];
+        local nodeInfo = C_Traits.GetNodeInfo(configID, nodeID);
+        if nodeInfo then
+            local ranksPurchased = nodeInfo.ranksPurchased or 0;
+            if nodeEntry then
+                totalCurrencySpent = totalCurrencySpent + nodeEntry.ranksPurchased;
+                if nodeEntry.isChoiceNode then
+                    local currentSelection = nodeInfo.activeEntry and nodeInfo.activeEntry.entryID or nil;
+                    if currentSelection and currentSelection ~= nodeEntry.selectionEntryID then
+                        totalOperations = totalOperations + 1
+                    elseif not currentSelection then
+                        totalOperations = totalOperations + 1
+                    end
+                elseif nodeEntry.ranksPurchased > ranksPurchased then
+                    totalOperations = totalOperations + nodeEntry.ranksPurchased - ranksPurchased;
+                elseif nodeEntry.ranksPurchased < ranksPurchased then
+                    nodesToRemove[nodeID] = ranksPurchased - nodeEntry.ranksPurchased;
+                    totalOperations = totalOperations + nodesToRemove[nodeID];
+                end
+            elseif ranksPurchased > 0 then
+                nodesToRemove[nodeID] = ranksPurchased;
+                totalOperations = totalOperations + ranksPurchased;
+            end
+        end
+    end
+
+    return nodesToRemove, totalCurrencySpent, totalOperations;
 end
 
 --- @param treeID number
@@ -964,7 +1023,13 @@ function TLM:PurchaseLoadoutEntryInfo(treeID, configID, loadoutEntryInfo, entrie
                 if loadoutEntryInfo[entry.nodeID] then
                     local nodeEntry = loadoutEntryInfo[entry.nodeID];
                     local nodeInfo = C_Traits.GetNodeInfo(configID, nodeEntry.nodeID);
-                    if nodeInfo and nodeInfo.ranksPurchased < entry.targetRank then
+                    if
+                        nodeInfo
+                        and (
+                            nodeInfo.ranksPurchased < entry.targetRank
+                            or (nodeEntry.isChoiceNode and nodeInfo.activeEntry and nodeInfo.activeEntry.entryID ~= nodeEntry.selectionEntryID)
+                        )
+                    then
                         local success = false;
                         if nodeEntry.isChoiceNode then
                             success = C_Traits.SetSelection(configID, nodeEntry.nodeID, nodeEntry.selectionEntryID);
@@ -1001,9 +1066,10 @@ function TLM:PurchaseOrderedEntries(orderedNodes, configID, loadoutEntryInfo)
             if nodeEntry.isChoiceNode then
                 success = C_Traits.SetSelection(configID, nodeEntry.nodeID, nodeEntry.selectionEntryID);
             elseif nodeEntry.ranksPurchased then
+                success = true;
                 local nodeInfo = C_Traits.GetNodeInfo(configID, nodeID);
                 for rank = 1, (nodeEntry.ranksPurchased - (nodeInfo and nodeInfo.ranksPurchased or 0)) do
-                    success = C_Traits.PurchaseRank(configID, nodeEntry.nodeID);
+                    success = C_Traits.PurchaseRank(configID, nodeEntry.nodeID) and success;
                 end
             end
             if success then
@@ -1032,7 +1098,9 @@ end
 
 function TLM:ApplyBlizzardLoadout(configID, autoApply, onAfterChangeCallback)
     self.BlizzardLoadoutChanger:SelectLoadout(configID, autoApply, onAfterChangeCallback);
-    self.charDb.selectedCustomLoadoutID[self.playerSpecID] = nil;
+    if autoApply then
+        self.charDb.selectedCustomLoadoutID[self.playerSpecID] = nil;
+    end
 end
 
 --- @param loadoutInfo TLM_LoadoutInfo_partial

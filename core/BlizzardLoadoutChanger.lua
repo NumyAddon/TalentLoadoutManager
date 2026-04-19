@@ -1,3 +1,5 @@
+if C_ClassTalents.SwitchToLoadoutByIndex then return end -- @todo: delete file in 12.0.5
+
 local addonName, ns = ...;
 
 --- @class TalentLoadoutManager
