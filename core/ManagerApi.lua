@@ -75,6 +75,29 @@ do
     end, API);
 end
 
+local function assertSelf(self, expectedSelf)
+    assert(self == expectedSelf, 'unexpected self, did you use a dot instead of a colon?');
+end
+
+local function assertNumber(value, name, nillable)
+    if nillable and value == nil then return; end
+    assert(type(value) == "number", name .. " must be a number or nil");
+end
+
+local function assertNumberOrString(value, name, nillable)
+    if nillable and value == nil then return; end
+    assert(type(value) == "number" or type(value) == "string", name .. " must be a number or string");
+end
+
+local function assertString(value, name, nillable)
+    if nillable and value == nil then return; end
+    assert(type(value) == "string", name .. " must be a string");
+end
+
+local function assertBoolean(value, name, nillable)
+    if nillable and value == nil then return; end
+    assert(type(value) == "boolean", name .. " must be a boolean or nil");
+end
 
 -------------------------------------------------------------------------
 ---
@@ -90,6 +113,10 @@ end
 --- @param classIDOrNil number|nil - if nil, will assume the player's current class
 --- @return TalentLoadoutManagerAPI_LoadoutInfo[]
 function GlobalAPI:GetLoadouts(specIDOrNil, classIDOrNil)
+    assertSelf(self, GlobalAPI);
+    assertNumber(specIDOrNil, "specIDOrNil", true);
+    assertNumber(classIDOrNil, "classIDOrNil", true);
+
     local loadouts = {};
     local tlmLoadouts = TLM:GetLoadouts(classIDOrNil, specIDOrNil);
 
@@ -105,6 +132,10 @@ end
 --- @param classIDOrNil number|nil - if nil, will assume the player's current class
 --- @return table<number|string> - list of loadout IDs
 function GlobalAPI:GetLoadoutIDs(specIDOrNil, classIDOrNil)
+    assertSelf(self, GlobalAPI);
+    assertNumber(specIDOrNil, "specIDOrNil", true);
+    assertNumber(classIDOrNil, "classIDOrNil", true);
+
     local loadoutIDs = {};
     local tlmLoadouts = TLM:GetLoadouts(classIDOrNil, specIDOrNil);
 
@@ -118,6 +149,8 @@ end
 --- Returns loadouts for all classes and specs
 --- @return TalentLoadoutManagerAPI_LoadoutInfo[]
 function GlobalAPI:GetAllLoadouts()
+    assertSelf(self, GlobalAPI);
+
     local loadouts = {};
     local tlmLoadouts = TLM:GetAllLoadouts();
 
@@ -131,6 +164,9 @@ end
 --- @param loadoutID number|string - the loadout ID, this can be a blizzard ConfigID, or a custom TLM loadout ID
 --- @return TalentLoadoutManagerAPI_LoadoutInfo|nil
 function GlobalAPI:GetLoadoutInfoByID(loadoutID)
+    assertSelf(self, GlobalAPI);
+    assertNumberOrString(loadoutID, "loadoutID");
+
     local displayInfo = TLM:GetLoadoutByID(loadoutID);
 
     return displayInfo and CreateLoadoutInfoFromDisplayInfo(displayInfo);
@@ -140,6 +176,10 @@ end
 --- @param excludeLevelingString boolean|nil - if true, leveling build information will never be included, even if it exists
 --- @return string|nil - export string, containing talent information. may also include leveling build information. nil if not found
 function GlobalAPI:GetExportString(loadoutID, excludeLevelingString)
+    assertSelf(self, GlobalAPI);
+    assertNumberOrString(loadoutID, "loadoutID");
+    assertBoolean(excludeLevelingString, "excludeLevelingString", true);
+
     local displayInfo = TLM:GetLoadoutByID(loadoutID);
 
     return displayInfo and TLM:ExportLoadoutToString(displayInfo.classID, displayInfo.specID, displayInfo.loadoutInfo, excludeLevelingString);
@@ -150,6 +190,10 @@ end
 --- @param newName string
 --- @return boolean - true if the rename was successful
 function GlobalAPI:RenameLoadout(loadoutID, newName)
+    assertSelf(self, GlobalAPI);
+    assertNumberOrString(loadoutID, "loadoutID");
+    assertString(newName, "newName");
+
     if IsLoadoutIDCustomLoadout(loadoutID) then
         local displayInfo = TLM:GetLoadoutByID(loadoutID);
         if not displayInfo then
@@ -162,7 +206,14 @@ function GlobalAPI:RenameLoadout(loadoutID, newName)
     end
 end
 
+--- @param loadoutID number|string - the loadout ID, this can be a blizzard ConfigID, or a custom TLM loadout ID
+--- @param isLocked boolean
+--- @return boolean - true if locked successfully
 function GlobalAPI:SetLoadoutLocked(loadoutID, isLocked)
+    assertSelf(self, GlobalAPI);
+    assertNumberOrString(loadoutID, "loadoutID");
+    assertBoolean(isLocked, "isLocked");
+
     local displayInfo = TLM:GetLoadoutByID(loadoutID);
     if not displayInfo then
         return false;
@@ -175,6 +226,9 @@ end
 --- @param loadoutID number|string - the loadout ID, this can be a blizzard ConfigID, or a custom TLM loadout ID
 --- @return boolean - true if the delete was successful
 function GlobalAPI:DeleteLoadout(loadoutID)
+    assertSelf(self, GlobalAPI);
+    assertNumberOrString(loadoutID, "loadoutID");
+
     if IsLoadoutIDCustomLoadout(loadoutID) then
         local displayInfo = TLM:GetLoadoutByID(loadoutID);
         if not displayInfo then
@@ -188,6 +242,9 @@ function GlobalAPI:DeleteLoadout(loadoutID)
 end
 
 function GlobalAPI:RemoveLoadoutFromStorage(loadoutID)
+    assertSelf(self, GlobalAPI);
+    assertNumberOrString(loadoutID, "loadoutID");
+
     if IsLoadoutIDCustomLoadout(loadoutID) then
         return self:DeleteLoadout(loadoutID);
     end
@@ -204,6 +261,10 @@ end
 --- @param loadoutName string - the name of the new loadout
 --- @return TalentLoadoutManagerAPI_LoadoutInfo|boolean, string|nil - the new loadout info, or false if there was an error; second return value is the error message if there was an error
 function GlobalAPI:ImportCustomLoadout(importText, loadoutName)
+    assertSelf(self, GlobalAPI);
+    assertString(importText, "importText");
+    assertString(loadoutName, "loadoutName");
+
     local autoApply, validateClassAndSpec, load = false, false, false;
     local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, autoApply, loadoutName, validateClassAndSpec, load);
 
@@ -217,6 +278,10 @@ end
 --- @return TalentLoadoutManagerAPI_LoadoutInfo|boolean  - updated loadout info, if the update was successful, false if there was an error
 --- @return string|nil - error message on failures
 function GlobalAPI:UpdateCustomLoadoutWithImportString(loadoutID, importText)
+    assertSelf(self, GlobalAPI);
+    assertNumberOrString(loadoutID, "loadoutID");
+    assertString(importText, "importText");
+
     local loadoutInfo = self:GetLoadoutInfoByID(loadoutID);
     if not loadoutInfo then
         return false, "Loadout not found";
@@ -234,6 +299,9 @@ end
 --- @param importText string - the import string (icy-veins calculator URLs are also supported)
 --- @return string|false - false on failure, serializedSelectedNodes on success
 function GlobalAPI:SerializeLoadoutString(importText)
+    assertSelf(self, GlobalAPI);
+    assertString(importText, "importText");
+
     return TLM:BuildSerializedSelectedNodesFromImportString(importText);
 end
 
@@ -248,6 +316,8 @@ end
 --- Get the active loadout info for the current character, this can be a Blizzard loadout, or a custom loadout, or nil if there is no active loadout
 --- @return TalentLoadoutManagerAPI_LoadoutInfo|nil - the active loadout info
 function CharacterAPI:GetActiveLoadoutInfo()
+    assertSelf(self, CharacterAPI);
+
     local loadoutID = self:GetActiveLoadoutID();
 
     return loadoutID and GlobalAPI:GetLoadoutInfoByID(loadoutID);
@@ -256,12 +326,16 @@ end
 --- Get the active loadout ID for the current character, this can be a Blizzard loadout, or a custom loadout, or nil if there is no active loadout
 --- @return number|string|nil - the loadout ID, this can be a blizzard ConfigID, or a custom TLM loadout ID
 function CharacterAPI:GetActiveLoadoutID()
+    assertSelf(self, CharacterAPI);
+
     return TLM:GetActiveLoadoutID();
 end
 
 --- Get the active Blizzard loadout ConfigID for the current character, or the "default loadout" or nil if there is no active Blizzard loadout
 --- @return number|nil
 function CharacterAPI:GetActiveBlizzardLoadoutConfigID()
+    assertSelf(self, CharacterAPI);
+
     return TLM:GetActiveBlizzardLoadoutConfigID();
 end
 
@@ -269,6 +343,10 @@ end
 --- @param childLoadoutID number|string - the loadout ID, this should be a custom TLM loadout ID
 --- @param parentLoadoutID number - the loadout ID, this should be a blizzard loadout ConfigID
 function CharacterAPI:SetParentLoadout(childLoadoutID, parentLoadoutID)
+    assertSelf(self, CharacterAPI);
+    assertNumberOrString(childLoadoutID, "childLoadoutID");
+    assertNumber(parentLoadoutID, "parentLoadoutID");
+
     return TLM:SetParentLoadout(childLoadoutID, parentLoadoutID);
 end
 
@@ -276,6 +354,10 @@ end
 --- @param loadoutID number|string - the loadout ID, this can be a blizzard ConfigID, or a custom TLM loadout ID
 --- @param autoApply boolean - if true, the talent changes will be applied immediately, if false, they are left pending
 function CharacterAPI:LoadLoadout(loadoutID, autoApply)
+    assertSelf(self, CharacterAPI);
+    assertNumberOrString(loadoutID, "loadoutID");
+    assertBoolean(autoApply, "autoApply", true);
+
     local displayInfo = TLM:GetLoadoutByID(loadoutID);
     if not displayInfo then
         return false;
@@ -296,6 +378,9 @@ end
 --- Update a custom loadout with the current talents
 --- This will clear any leveling build information!
 function CharacterAPI:UpdateCustomLoadoutWithCurrentTalents(loadoutID)
+    assertSelf(self, CharacterAPI);
+    assertNumberOrString(loadoutID, "loadoutID");
+
     local configID = C_ClassTalents.GetActiveConfigID();
     if not configID then return; end
 
@@ -308,6 +393,9 @@ end
 --- @param loadoutName string - the name of the new loadout
 --- @return TalentLoadoutManagerAPI_LoadoutInfo|nil - the new loadout info, nil if there was an error finding the created loadout
 function CharacterAPI:CreateCustomLoadoutFromCurrentTalents(loadoutName)
+    assertSelf(self, CharacterAPI);
+    assertString(loadoutName, "loadoutName");
+
     local loadoutInfo = TLM:CreateCustomLoadoutFromActiveTalents(loadoutName, nil, nil);
 
     return GlobalAPI:GetLoadoutInfoByID(loadoutInfo.id);
@@ -320,6 +408,11 @@ end
 --- @return TalentLoadoutManagerAPI_LoadoutInfo|false - the new loadout info, or false on error
 --- @return string|nil - error message if there was an error
 function CharacterAPI:ImportCustomLoadout(importText, loadoutName, autoApply)
+    assertSelf(self, CharacterAPI);
+    assertString(importText, "importText");
+    assertString(loadoutName, "loadoutName");
+    assertBoolean(autoApply, "autoApply", true);
+
     local validateClassAndSpec, load = true, true;
     local newLoadoutInfo, errorOrNil = TLM:CreateCustomLoadoutFromImportString(importText, autoApply, loadoutName, validateClassAndSpec, load);
 
