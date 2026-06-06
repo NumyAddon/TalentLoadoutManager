@@ -223,8 +223,8 @@ function GlobalAPI:SetLoadoutLocked(loadoutID, isLocked)
 end
 
 --- you cannot delete a Blizzard loadout if you are not the owner
---- @param loadoutID number|string - the loadout ID, this can be a blizzard ConfigID, or a custom TLM loadout ID
---- @return boolean - true if the delete was successful
+--- @param loadoutID number|string # the loadout ID, this can be a blizzard ConfigID, or a custom TLM loadout ID
+--- @return boolean # true if the delete was successful
 function GlobalAPI:DeleteLoadout(loadoutID)
     assertSelf(self, GlobalAPI);
     assertNumberOrString(loadoutID, "loadoutID");
