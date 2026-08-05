@@ -48,17 +48,17 @@ do
 end
 
 function TLM:OnInitialize()
-    if NumyProfiler then
-        --- @type NumyProfiler
-        local NumyProfiler = NumyProfiler;
-        NumyProfiler:WrapModules(addonName, 'Main', self);
-        NumyProfiler:WrapModules(addonName, 'IcyVeinsImport', IcyVeinsImport);
-        NumyProfiler:WrapModules(addonName, 'ImportExport', ImportExport);
-        NumyProfiler:WrapModules(addonName, 'Config', ns.Config);
-        NumyProfiler:WrapModules(addonName, 'API', TalentLoadoutManagerAPI);
+    if NumyFunctionProfiler then
+        --- @type NumyFunctionProfiler
+        local NumyFunctionProfiler = NumyFunctionProfiler;
+        NumyFunctionProfiler:WrapModules(addonName, 'Main', self);
+        NumyFunctionProfiler:WrapModules(addonName, 'IcyVeinsImport', IcyVeinsImport);
+        NumyFunctionProfiler:WrapModules(addonName, 'ImportExport', ImportExport);
+        NumyFunctionProfiler:WrapModules(addonName, 'Config', ns.Config);
+        NumyFunctionProfiler:WrapModules(addonName, 'API', TalentLoadoutManagerAPI);
 
         for moduleName, module in self:IterateModules() do
-            NumyProfiler:WrapModules(addonName, moduleName, module);
+            NumyFunctionProfiler:WrapModules(addonName, moduleName, module);
         end
     end
     TalentLoadoutManagerDB = TalentLoadoutManagerDB or {};
