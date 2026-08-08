@@ -44,7 +44,7 @@ function Module:SetupHook()
 end
 
 function Module:GetDefaultActionText(elementData)
-    return "Load";
+    return ns.L["Load"];
 end
 
 function Module:GetExportString()

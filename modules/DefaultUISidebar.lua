@@ -5,6 +5,7 @@ local TLM = ns.TLM;
 
 --- @type TalentLoadoutManagerConfig
 local Config = ns.Config;
+local L = ns.L;
 
 --- @type TalentLoadoutManagerAPI
 local API = TalentLoadoutManagerAPI;
@@ -52,9 +53,9 @@ function Module:SetupHook()
 end
 
 function Module:GetDefaultActionText(elementData)
-    return (elementData.data.playerIsOwner and elementData.data.isBlizzardLoadout) and "Load & Apply"
-        or Config:GetConfig('autoApply') and "Load & Apply"
-        or "Load";
+    return (elementData.data.playerIsOwner and elementData.data.isBlizzardLoadout) and L["Load & Apply"]
+        or Config:GetConfig('autoApply') and L["Load & Apply"]
+        or L["Load"];
 end
 
 function Module:GetExportString()

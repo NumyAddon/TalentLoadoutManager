@@ -38,12 +38,12 @@ end
 --- @public
 function IcyVeinsImport:BuildSerializedSelectedNodesFromUrl(fullUrl, expectedClassID, expectedSpecID)
     if not self:IsTalentUrl(fullUrl) then
-        return false, 'Invalid URL';
+        return false, ns.L["Invalid URL"];
     end
 
     local classID, specID, levelingBuild = self:ParseUrl(fullUrl);
     if not levelingBuild or not classID or not specID then
-        return false, 'Invalid URL';
+        return false, ns.L["Invalid URL"];
     end
 
     if (expectedSpecID and specID ~= expectedSpecID) then
@@ -51,7 +51,7 @@ function IcyVeinsImport:BuildSerializedSelectedNodesFromUrl(fullUrl, expectedCla
     end
 
     if (expectedClassID and classID ~= expectedClassID) then
-        return false, 'Wrong class';
+        return false, ns.L["Wrong class"];
     end
 
     local selectedNodesByID = {};
@@ -199,7 +199,7 @@ function IcyVeinsImport:ParseDataSegment(dataStream, nodes, treeType)
         nodeIndex = nodeIndex + 1; -- 0-based to 1-based
         local nodeID = nodes[nodeIndex];
         if not nodeID then
-            print('Error while importing IcyVeins URL: Could not find node for index', nodeIndex, '-', treeType);
+            print(ns.L["IcyVeins import error"]:format(tostring(nodeIndex), tostring(treeType)));
             if DevTool and DevTool.AddData then
                 DevTool:AddData({
                     nodeIndex = nodeIndex,

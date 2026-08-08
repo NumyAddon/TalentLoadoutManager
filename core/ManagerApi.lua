@@ -284,7 +284,7 @@ function GlobalAPI:UpdateCustomLoadoutWithImportString(loadoutID, importText)
 
     local loadoutInfo = self:GetLoadoutInfoByID(loadoutID);
     if not loadoutInfo then
-        return false, "Loadout not found";
+        return false, ns.L["Loadout not found"];
     end
     local result, errorOrLevelingOrder = TLM:BuildSerializedSelectedNodesFromImportString(importText, loadoutInfo.classID, loadoutInfo.specID);
     if result then
@@ -418,7 +418,7 @@ function CharacterAPI:ImportCustomLoadout(importText, loadoutName, autoApply)
 
     local info = newLoadoutInfo and GlobalAPI:GetLoadoutInfoByID(newLoadoutInfo.id);
     if not info then
-        return false, errorOrNil or 'Could not find newly imported loadout';
+        return false, errorOrNil or ns.L["Could not find newly imported loadout"];
     end
 
     return info, nil;

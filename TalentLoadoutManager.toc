@@ -3,9 +3,11 @@
 ## Interface: 120000
 #@end-debug@
 ## Title: Talent Loadout Manager
+## Title-ruRU: Talent Loadout Manager
 ## Author: Numy
 ## IconTexture: Interface\Addons\TalentLoadoutManager\media\icon
 ## Notes: Talent Loadout Manager
+## Notes-ruRU: Менеджер наборов талантов
 ## Version: @project-version@
 ## X-Curse-Project-ID: 821821
 ## X-Wago-ID: ZKbeD961
@@ -25,6 +27,10 @@
 ## Category-zhTW: 戰鬥
 
 libs\embeds.xml
+
+core\Locale.lua
+locales\enUS.lua
+locales\ruRU.lua
 
 core\ImportExportV2.lua
 core\IcyVeinsImport.lua

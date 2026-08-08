@@ -2,6 +2,7 @@ local addonName, ns = ...;
 
 local ChatEdit_InsertLink = ChatFrameUtil and ChatFrameUtil.InsertLink or ChatEdit_InsertLink
 local ChatFrame_OpenChat = ChatFrameUtil and ChatFrameUtil.OpenChat or ChatFrame_OpenChat
+local L = ns.L;
 
 --- @class TLM_SideBarMixin: AceModule, AceHook-3.0
 local SideBarMixin = {};
@@ -32,12 +33,12 @@ local ANCHOR_RIGHT_INNER = 3;
 local LOCK_MARKUP = CreateAtlasMarkup("AdventureMapIcon-Lock", 16, 16) .. " ";
 
 function SideBarMixin:OnInitialize()
-    local loadoutNameSubText = "Anything before the first '||' character will not display. This allows you to sort loadouts by adding a prefix.";
+    local loadoutNameSubText = L["Loadout name hint"];
 
     local moduleName = self.name;
     self.renameDialogName = moduleName .. "_RenameLoadout";
     StaticPopupDialogs[self.renameDialogName] = {
-        text = NORMAL_FONT_COLOR:WrapTextInColorCode("Rename loadout (%s)") .. "\n" .. loadoutNameSubText,
+        text = NORMAL_FONT_COLOR:WrapTextInColorCode(L["Rename loadout (%s)"]) .. "\n" .. loadoutNameSubText,
         button1 = OKAY,
         button2 = CANCEL,
         hasEditBox = true,
@@ -80,7 +81,7 @@ function SideBarMixin:OnInitialize()
 
     self.createDialogName = moduleName .. "_CreateLoadout";
     StaticPopupDialogs[self.createDialogName] = {
-        text = NORMAL_FONT_COLOR:WrapTextInColorCode("Create custom loadout") .. "\n" .. loadoutNameSubText,
+        text = NORMAL_FONT_COLOR:WrapTextInColorCode(L["Create custom loadout"]) .. "\n" .. loadoutNameSubText,
         button1 = OKAY,
         button2 = CANCEL,
         hasEditBox = true,
@@ -119,7 +120,7 @@ function SideBarMixin:OnInitialize()
 
     self.deleteDialogName = moduleName .. "_DeleteLoadout";
     StaticPopupDialogs[self.deleteDialogName] = {
-        text = "Delete loadout (%s)?",
+        text = L["Delete loadout (%s)?"],
         button1 = OKAY,
         button2 = CANCEL,
         --- @param dialog StaticPopupTemplate
@@ -136,7 +137,7 @@ function SideBarMixin:OnInitialize()
 
     self.removeFromListDialogName = moduleName .. "_RemoveLoadout";
     StaticPopupDialogs[self.removeFromListDialogName] = {
-        text = "Remove loadout from list (%s)?",
+        text = L["Remove loadout from list (%s)?"],
         button1 = OKAY,
         button2 = CANCEL,
         --- @param dialog StaticPopupTemplate
@@ -153,7 +154,7 @@ function SideBarMixin:OnInitialize()
 
     self.removeFromListBulkDialogName = moduleName .. "_RemoveLoadoutBulk";
     StaticPopupDialogs[self.removeFromListBulkDialogName] = {
-        text = "Remove all loadouts from %s from the list?",
+        text = L["Remove all loadouts from %s from the list?"],
         button1 = OKAY,
         button2 = CANCEL,
         --- @param dialog StaticPopupTemplate
@@ -170,7 +171,7 @@ function SideBarMixin:OnInitialize()
 
     self.copyDialogName = moduleName .. "_CopyText";
     StaticPopupDialogs[self.copyDialogName] = {
-        text = "CTRL-C to copy",
+        text = L["CTRL-C to copy"],
         button1 = CLOSE,
         --- @param dialog StaticPopupTemplate
         --- @param data string
@@ -380,7 +381,7 @@ end
 function SideBarMixin:CreateImportDialog()
     --- main dialog
     local dialog = CreateFrame("Frame", nil, UIParent, "ClassTalentLoadoutDialogTemplate");
-    dialog.titleText = "Import Custom Loadout";
+    dialog.titleText = L["Import Custom Loadout"];
     Mixin(dialog, ClassTalentLoadoutImportDialogMixin);
     dialog:SetSize(460, 300);
     dialog:Hide();
@@ -388,7 +389,7 @@ function SideBarMixin:CreateImportDialog()
     --- import control
     dialog.ImportControl = CreateFrame("Frame", nil, dialog);
     local importControl = dialog.ImportControl;
-    importControl.labelText = HUD_CLASS_TALENTS_IMPORT_DIALOG_EDIT_BOX_LABEL .. " (Icy-veins calculator links are also supported)";
+    importControl.labelText = L["Import control label"]:format(HUD_CLASS_TALENTS_IMPORT_DIALOG_EDIT_BOX_LABEL);
     importControl:SetPoint("TOPLEFT", dialog.ContentArea);
     importControl:SetPoint("TOPRIGHT", dialog.ContentArea);
     importControl:SetHeight(100);
@@ -431,7 +432,7 @@ function SideBarMixin:CreateImportDialog()
         checkbox:SetScript('OnEnter', function(cb)
             GameTooltip:SetOwner(cb, 'ANCHOR_RIGHT');
             GameTooltip:SetText(cb.text:GetText());
-            GameTooltip:AddLine('If checked, the loadout will automatically be applied to your character when you import it.', 1, 1, 1, true);
+            GameTooltip:AddLine(L["Auto apply on import tooltip"], 1, 1, 1, true);
             GameTooltip:Show();
         end);
         checkbox:SetScript('OnLeave', function()
@@ -439,7 +440,7 @@ function SideBarMixin:CreateImportDialog()
         end);
         checkbox.text = checkbox:CreateFontString(nil, 'ARTWORK', 'GameFontNormal');
         checkbox.text:SetPoint('LEFT', checkbox, 'RIGHT', 0, 1);
-        checkbox.text:SetText(string.format('Automatically Apply the loadout on import'));
+        checkbox.text:SetText(L["Automatically Apply the loadout on import"]);
         checkbox:SetHitRectInsets(-10, -checkbox.text:GetStringWidth(), -5, 0);
     end
 
@@ -451,7 +452,7 @@ function SideBarMixin:CreateImportDialog()
     checkbox:SetScript('OnEnter', function(cb)
         GameTooltip:SetOwner(cb, 'ANCHOR_RIGHT');
         GameTooltip:SetText(cb.text:GetText());
-        GameTooltip:AddLine('If checked, the imported build will be imported into the currently selected loadout.', 1, 1, 1);
+        GameTooltip:AddLine(L["Import into current loadout tooltip"], 1, 1, 1);
         GameTooltip:Show();
     end);
     checkbox:SetScript('OnLeave', function()
@@ -461,7 +462,7 @@ function SideBarMixin:CreateImportDialog()
         local checked = cb:IsShown() and cb:GetChecked();
         local dialog = cb:GetParent();
         dialog.NameControl:SetShown(not checked);
-        dialog.NameControl:SetText(checked and '*importing into current loadout*' or '');
+        dialog.NameControl:SetText(checked and L["*importing into current loadout*"] or '');
         dialog:UpdateAcceptButtonEnabledState();
     end
     checkbox:SetScript('OnClick', checkboxOnChange);
@@ -469,7 +470,7 @@ function SideBarMixin:CreateImportDialog()
     checkbox:SetScript('OnShow', checkboxOnChange);
     checkbox.text = checkbox:CreateFontString(nil, 'ARTWORK', 'GameFontNormal');
     checkbox.text:SetPoint('LEFT', checkbox, 'RIGHT', 0, 1);
-    checkbox.text:SetText(string.format('Import into currently selected custom loadout'));
+    checkbox.text:SetText(L["Import into currently selected custom loadout"]);
     checkbox:SetHitRectInsets(-10, -checkbox.text:GetStringWidth(), -5, 0);
 
     --- accept button
@@ -628,32 +629,32 @@ function SideBarMixin:CreateSideBar()
     -- add a title
     sideBar.Title = sideBar:CreateFontString(nil, "OVERLAY", "GameFontNormal");
     sideBar.Title:SetPoint("TOPLEFT", sideBar, "TOPLEFT", 10, -10);
-    sideBar.Title:SetText("Talent Loadout Manager");
+    sideBar.Title:SetText(L["Talent Loadout Manager"]);
 
     -- add Create button
     sideBar.CreateButton = CreateFrame("Button", nil, sideBar, "UIPanelButtonTemplate, UIButtonTemplate");
     sideBar.CreateButton:SetSize((width / 2) - 10, 20);
-    sideBar.CreateButton:SetText("Create");
+    sideBar.CreateButton:SetText(L["Create"]);
     sideBar.CreateButton:SetPoint("TOPLEFT", sideBar.Title, "BOTTOMLEFT", 0, -10);
     sideBar.CreateButton:SetScript("OnClick", function()
         StaticPopup_Show(self.createDialogName);
     end);
-    sideBar.CreateButton.tooltipText = "Create a new custom loadout";
+    sideBar.CreateButton.tooltipText = L["Create a new custom loadout"];
 
     -- add Import button
     sideBar.ImportButton = CreateFrame("Button", nil, sideBar, "UIPanelButtonTemplate, UIButtonTemplate");
     sideBar.ImportButton:SetSize((width / 2) - 10, 20);
-    sideBar.ImportButton:SetText("Import");
+    sideBar.ImportButton:SetText(L["Import"]);
     sideBar.ImportButton:SetPoint("TOPLEFT", sideBar.CreateButton, "TOPRIGHT", 0, 0);
     sideBar.ImportButton:SetScript("OnClick", function()
         self.importDialog:ShowDialog();
     end);
-    sideBar.ImportButton.tooltipText = "Import a custom loadout from a string";
+    sideBar.ImportButton.tooltipText = L["Import a custom loadout from a string"];
 
     -- add a Save button
     sideBar.SaveButton = CreateFrame("Button", nil, sideBar, "UIPanelButtonTemplate, UIButtonTemplate");
     sideBar.SaveButton:SetSize((width / 2) - 10, 20);
-    sideBar.SaveButton:SetText("Save");
+    sideBar.SaveButton:SetText(L["Save"]);
     sideBar.SaveButton:SetPoint("TOPLEFT", sideBar.CreateButton, "BOTTOMLEFT", 0, 0);
     sideBar.SaveButton:SetScript("OnClick", function()
         local activeLoadout = self:GetActiveLoadout();
@@ -662,17 +663,17 @@ function SideBarMixin:CreateSideBar()
         self:UpdateCustomLoadoutWithCurrentTalents(activeLoadout.id);
         self:SaveButtonUpdateEnableState();
     end);
-    sideBar.SaveButton.tooltipText = "Save the current talents into the currently selected loadout";
+    sideBar.SaveButton.tooltipText = L["Save the current talents into the currently selected loadout"];
 
     -- add a Config button
     sideBar.ConfigButton = CreateFrame("Button", nil, sideBar, "UIPanelButtonTemplate, UIButtonTemplate");
     sideBar.ConfigButton:SetSize((width / 2) - 10, 20);
-    sideBar.ConfigButton:SetText("Config");
+    sideBar.ConfigButton:SetText(L["Config"]);
     sideBar.ConfigButton:SetPoint("TOPLEFT", sideBar.SaveButton, "TOPRIGHT", 0, 0);
     sideBar.ConfigButton:SetScript("OnClick", function()
         self:ShowConfigDialog();
     end);
-    sideBar.ConfigButton.tooltipText = "Open the configuration UI";
+    sideBar.ConfigButton.tooltipText = L["Open the configuration UI"];
 
     -- add a expand button
     sideBar.ToggleSideBarButton = CreateFrame("Button", nil, talentsTab, "UIPanelButtonTemplate, UIButtonTemplate");
@@ -686,9 +687,9 @@ function SideBarMixin:CreateSideBar()
     sideBar.ToggleSideBarButton:SetPoint("RIGHT", talentsTab, "TOPLEFT", 10, -52);
     sideBar.ToggleSideBarButton:SetScript("OnEnter", function()
         GameTooltip:SetOwner(sideBar.ToggleSideBarButton, "ANCHOR_RIGHT");
-        GameTooltip:SetText("Toggle Sidebar");
-        GameTooltip:AddLine("|cffeda55fShift + Click|r to move the side bar to the other side of the UI.", 1, 1, 1, true);
-        GameTooltip:AddLine("|cffeda55fRight-Click|r to move the side bar to the inside side of the UI.", 1, 1, 1, true);
+        GameTooltip:SetText(L["Toggle Sidebar"]);
+        GameTooltip:AddLine(L["Shift + Click to move sidebar"], 1, 1, 1, true);
+        GameTooltip:AddLine(L["Right-Click to move sidebar inside"], 1, 1, 1, true);
         GameTooltip:Show();
     end);
     --- @param mouseButton MouseButton
@@ -806,9 +807,9 @@ function SideBarMixin:CreateScrollBox(parentContainer)
             GameTooltip:SetOwner(frame, "ANCHOR_RIGHT");
             GameTooltip:SetText(entry.data.name);
             local defaultAction = self:GetDefaultActionText(entry);
-            GameTooltip:AddLine(string.format("Left-Click to %s this loadout", defaultAction), 1, 1, 1);
-            GameTooltip:AddLine("Shift-Click to link to chat", 1, 1, 1);
-            GameTooltip:AddLine("Right-Click for options", 1, 1, 1);
+            GameTooltip:AddLine(L["Left-Click to %s this loadout"]:format(defaultAction), 1, 1, 1);
+            GameTooltip:AddLine(L["Shift-Click to link to chat"], 1, 1, 1);
+            GameTooltip:AddLine(L["Right-Click for options"], 1, 1, 1);
 
             -- Allows other addons, like TalentTreeTweaks to safely hook into GameTooltip:Show
             frame.TalentBuildExportString = GlobalAPI:GetExportString(entry.data.id);
@@ -846,33 +847,33 @@ function SideBarMixin:GenerateMenu(rootDescription, frame, loadoutInfo)
     local playerClassID = select(3, UnitClass("player"));
 
     rootDescription:CreateTitle(loadoutInfo.displayName);
-    rootDescription:CreateButton("Load", function()
+    rootDescription:CreateButton(L["Load"], function()
         local forceApply = false;
         self:OnElementClick(frame, loadoutInfo, forceApply);
     end);
     if self.ShowLoadAndApply then
-        rootDescription:CreateButton("Load & Apply", function()
+        rootDescription:CreateButton(L["Load & Apply"], function()
             local forceApply = true;
             self:OnElementClick(frame, loadoutInfo, forceApply);
         end);
     end
-    rootDescription:CreateButton("Save current talents into loadout", function()
+    rootDescription:CreateButton(L["Save current talents into loadout"], function()
         self:UpdateCustomLoadoutWithCurrentTalents(loadoutInfo.id);
     end):SetEnabled(not loadoutInfo.isBlizzardLoadout and not loadoutInfo.isLocked);
 
     local lock = rootDescription:CreateCheckbox(
-        "Locked",
+        L["Locked"],
         function() return loadoutInfo.isLocked; end,
         function() self:ToggleLock(loadoutInfo.id); return MenuResponse.CloseAll; end
     );
     lock:SetEnabled(not loadoutInfo.isBlizzardLoadout);
-    lock:SetTitleAndTextTooltip("Lock loadout", "Locking a loadout blocks you from saving changes to it.");
+    lock:SetTitleAndTextTooltip(L["Lock loadout"], L["Lock loadout tooltip"]);
 
-    rootDescription:CreateButton("Rename", function()
+    rootDescription:CreateButton(L["Rename"], function()
         StaticPopup_Show(self.renameDialogName, loadoutInfo.name, nil, loadoutInfo);
     end):SetEnabled(loadoutInfo.playerIsOwner);
     if classID == playerClassID and not loadoutInfo.isBlizzardLoadout then
-        local baseLoadoutElementDescription = rootDescription:CreateButton("Set Blizzard base loadout", function() end);
+        local baseLoadoutElementDescription = rootDescription:CreateButton(L["Set Blizzard base loadout"], function() end);
 
         local function isSelected(data) return data.id == loadoutInfo.parentID; end
         local function setSelected(data) CharacterAPI:SetParentLoadout(loadoutInfo.id, data.id); end
@@ -884,31 +885,31 @@ function SideBarMixin:GenerateMenu(rootDescription, frame, loadoutInfo)
             end
         end
     end
-    rootDescription:CreateButton("Export", function()
+    rootDescription:CreateButton(L["Export"], function()
         self:ExportLoadout(loadoutInfo);
     end);
-    rootDescription:CreateButton("Link to chat", function()
+    rootDescription:CreateButton(L["Link to chat"], function()
         self:LinkToChat(loadoutInfo.id);
     end);
     if self.ShowShowInTTV then
-        rootDescription:CreateButton("Open in TalentTreeViewer", function()
+        rootDescription:CreateButton(L["Open in TalentTreeViewer"], function()
             self:OpenInTalentTreeViewer(loadoutInfo);
         end):SetEnabled(nil ~= TalentViewerLoader);
     end
     if loadoutInfo.playerIsOwner then
-        rootDescription:CreateButton("Delete", function()
+        rootDescription:CreateButton(L["Delete"], function()
             StaticPopup_Show(self.deleteDialogName, loadoutInfo.name, nil, loadoutInfo);
         end);
     else
-        rootDescription:CreateButton("Remove from list", function()
+        rootDescription:CreateButton(L["Remove from list"], function()
             StaticPopup_Show(self.removeFromListDialogName, loadoutInfo.name, nil, loadoutInfo);
         end);
-        rootDescription:CreateButton("Remove all loadouts from this character from the list", function()
+        rootDescription:CreateButton(L["Remove all loadouts from this character from the list"], function()
             StaticPopup_Show(self.removeFromListBulkDialogName, loadoutInfo.owner, nil, loadoutInfo);
         end);
-        rootDescription:CreateButton("Permanently hide all loadouts from this character", function()
+        rootDescription:CreateButton(L["Permanently hide all loadouts from this character"], function()
             Config:SetCharacterShown(loadoutInfo.owner, false);
-            TLM:Printf("Loadouts from %s are now hidden. You can reset this in the config.", loadoutInfo.owner);
+            TLM:Printf(L["Loadouts from %s are now hidden. You can reset this in the config."], loadoutInfo.owner);
         end);
     end
 end
@@ -1162,7 +1163,7 @@ function SideBarMixin:TryIntegrateWithBlizzMove()
     end
 
     if(not compatible) then
-        print(addonName .. ' is not compatible with the current version of BlizzMove, please update.')
+        print(L["BlizzMove incompatible"]:format(addonName));
         return;
     end
     if not BlizzMoveAPI then return end

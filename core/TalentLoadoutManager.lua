@@ -481,7 +481,7 @@ function TLM:UpdateBlizzardLoadout(configID, specID)
         self.cache.loadoutByID[configID] = displayInfo;
         self:TriggerEvent(self.Event.LoadoutUpdated, classID, specID, configID, displayInfo);
     else
-        self:Print("Failed to serialize loadout " .. configID);
+        self:Print(ns.L["Failed to serialize loadout %s"]:format(tostring(configID)));
     end
 end
 
@@ -799,7 +799,7 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
     local parentConfigID = self:GetParentMappingForLoadout(loadoutInfo, specID)[0];
     local activeConfigID = C_ClassTalents.GetActiveConfigID();
     if not activeConfigID then
-        self:Print("You have not unlocked talents yet.");
+        self:Print(ns.L["You have not unlocked talents yet."]);
 
         return false;
     end
@@ -822,11 +822,11 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
 
     if autoApply and parentConfigID == nil then
         if not C_ClassTalents.CanCreateNewConfig() then
-            self:Print("You have too many blizzard loadouts. Please delete one in order to switch to a custom loadout.");
+            self:Print(ns.L["Too many blizzard loadouts"]);
             return false;
         end
         if not C_ClassTalents.RequestNewConfig("TalentLoadoutManager") then
-            self:Print("Failed to create new loadout.");
+            self:Print(ns.L["Failed to create new loadout."]);
             return false;
         end
 
@@ -863,11 +863,11 @@ function TLM:ApplyCustomLoadout(loadoutInfo, autoApply)
         end
     end
     if hasAvailableCurrency and entriesCount > 0 then
-        self:Print("Failed to fully apply loadout. " .. entriesCount .. " entries could not be purchased.");
+        self:Print(ns.L["Failed to fully apply loadout. %s entries could not be purchased."]:format(tostring(entriesCount)));
     end
 
     if autoApply and C_Traits.ConfigHasStagedChanges(activeConfigID) and not C_ClassTalents.CommitConfig(parentConfigID) then
-        self:Print("Failed to commit loadout.");
+        self:Print(ns.L["Failed to commit loadout."]);
         return false;
     end
     local talentsTab = PlayerSpellsFrame and PlayerSpellsFrame.TalentsFrame
@@ -1112,7 +1112,7 @@ function TLM:CreateCustomLoadoutFromLoadoutData(loadoutInfo, classIDOrNil, specI
     self.db.customLoadouts[classID][specID] = self.db.customLoadouts[classID][specID] or {};
 
     local id = "C_" .. self:IncrementCustomLoadoutAutoIncrement();
-    local name = loadoutInfo.name or ('Custom Loadout ' .. id);
+    local name = loadoutInfo.name or ns.L["Custom Loadout %s"]:format(tostring(id));
     --- @type TLM_LoadoutInfo
     local newLoadoutInfo = {
         id = id,
@@ -1356,7 +1356,7 @@ function TLM:CheckForBadAddons(printToChat)
         and ZygorGuidesViewer.db.profile
         and ZygorGuidesViewer.db.profile.talenton
     then
-        badAddons['ZygorGuidesViewer'] = 'Zygor Guides\' talent advisor is enabled. This is known to cause game freezes when changing loadouts. Disable this feature and report it to the author of Zygor Guides.';
+        badAddons['ZygorGuidesViewer'] = ns.L["Zygor warning"];
     end
 
     if printToChat then

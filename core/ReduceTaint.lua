@@ -6,6 +6,7 @@ local addonName, ns = ...;
 
 --- @type TalentLoadoutManager
 local TLM = ns.TLM;
+local L = ns.L;
 
 --- @class TLM_ReduceTaintModule: AceModule, AceHook-3.0
 local Module = TLM:NewModule('ReduceTaint', 'AceHook-3.0');
@@ -17,7 +18,7 @@ function Module:OnInitialize()
     end);
     self.copyDialogName = 'TalentLoadoutManager_ReduceTaint_CopyTextDialog';
     StaticPopupDialogs[self.copyDialogName] = {
-        text = 'CTRL-C to copy %s',
+        text = L["CTRL-C to copy %s"],
         button1 = CLOSE,
         --- @param dialog StaticPopupTemplate
         --- @param data string

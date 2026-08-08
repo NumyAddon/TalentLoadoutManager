@@ -2,6 +2,7 @@ local addonName, ns = ...;
 
 --- @class TalentLoadoutManager
 local TLM = ns.TLM;
+local L = ns.L;
 
 --- @type TalentLoadoutManagerConfig
 local Config = ns.Config;
@@ -80,7 +81,7 @@ function Module:ReapplyLoadout()
     local loadoutInfo = GlobalAPI:GetLoadoutInfoByID(loadoutID);
     if not loadoutInfo then return end
 
-    self:Print("Automatically re-applying loadout", loadoutInfo.displayName, ", go to /TLM to disable this behavior.");
+    self:Print(L["Automatically re-applying loadout"]:format(loadoutInfo.displayName));
     local mapBefore = self:GetSpellIDMap();
     CharacterAPI:LoadLoadout(loadoutID, true);
     local mapAfter = self:GetSpellIDMap();
@@ -89,9 +90,9 @@ function Module:ReapplyLoadout()
         for spellID, rankAfter in pairs(mapAfter) do
             if mapBefore[spellID] ~= rankAfter then
                 if (mapBefore[spellID] or 0) == 0 then
-                    self:Print("New Talent Learned:", C_Spell.GetSpellLink(spellID));
+                    self:Print(L["New Talent Learned:"], C_Spell.GetSpellLink(spellID));
                 else
-                    self:Print("Talent Upgraded:", C_Spell.GetSpellLink(spellID), "to rank", rankAfter);
+                    self:Print(L["Talent Upgraded:"], C_Spell.GetSpellLink(spellID), L["to rank"], rankAfter);
                 end
             end
         end
