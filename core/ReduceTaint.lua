@@ -4,6 +4,8 @@ if C_AddOns.IsAddOnLoaded('TalentTreeTweaks') then return; end
 
 local addonName, ns = ...;
 
+local L = ns.L;
+
 --- @type TalentLoadoutManager
 local TLM = ns.TLM;
 
@@ -17,7 +19,7 @@ function Module:OnInitialize()
     end);
     self.copyDialogName = 'TalentLoadoutManager_ReduceTaint_CopyTextDialog';
     StaticPopupDialogs[self.copyDialogName] = {
-        text = 'CTRL-C to copy %s',
+        text = L['CTRL-C to copy %s'],
         button1 = CLOSE,
         --- @param dialog StaticPopupTemplate
         --- @param data string
@@ -105,7 +107,7 @@ function Module:ReplaceCopyLoadoutButton(talentsTab)
             self.cachedInspectExportString
             or (talentsTab:GetInspectUnit() and C_Traits.GenerateInspectImportString(talentsTab:GetInspectUnit()) or talentsTab:GetInspectString());
         if loadoutString and (loadoutString ~= '') then
-            self:CopyText(loadoutString, 'Inspected Build');
+            self:CopyText(loadoutString, L['Inspected Build']);
         end
     end);
 end
@@ -221,7 +223,7 @@ end
 
 local function replacedShareButtonCallback()
     local exportString = Module:GetTalentFrame():GetLoadoutExportString();
-    Module:CopyText(exportString, 'Talent Loadout String');
+    Module:CopyText(exportString, L['Talent Loadout String']);
 end
 
 function Module:OnLoadoutMenuOpen(dropdown, rootDescription)

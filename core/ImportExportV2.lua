@@ -1,5 +1,7 @@
 local _, ns = ...
 
+local L = ns.L;
+
 local LOADOUT_SERIALIZATION_VERSION = 2;
 if C_Traits.GetLoadoutSerializationVersion() ~= LOADOUT_SERIALIZATION_VERSION then return; end
 
@@ -72,7 +74,7 @@ function ImportExport:BuildSerializedSelectedNodesFromImportString(importText, e
     end
 
     if(expectedClassID and classIDFromString ~= expectedClassID) then
-        return false, "Wrong class";
+        return false, L["Wrong class"];
     end
 
     local treeID = LibTT:GetClassTreeID(classIDFromString);
@@ -305,7 +307,7 @@ function ImportExport:ConvertToImportLoadoutEntryInfo(treeID, loadoutContent)
             local choiceNodeSelection = indexInfo.isChoiceNode and indexInfo.choiceNodeSelection or nil;
             if indexInfo.isNodeSelected and isChoiceNode ~= indexInfo.isChoiceNode then
                 -- guard against corrupt import strings
-                print(string.format('Import string is corrupt, node type mismatch at nodeID %d. First option will be selected.', treeNodeID));
+                print(string.format(L['Import string is corrupt, node type mismatch at nodeID %d. First option will be selected.'], treeNodeID));
                 choiceNodeSelection = 1;
             end
             --- @type TLM_LoadoutEntryInfo

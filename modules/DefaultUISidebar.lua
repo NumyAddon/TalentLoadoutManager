@@ -1,5 +1,7 @@
 local addonName, ns = ...;
 
+local L = ns.L;
+
 --- @class TalentLoadoutManager
 local TLM = ns.TLM;
 
@@ -52,9 +54,9 @@ function Module:SetupHook()
 end
 
 function Module:GetDefaultActionText(elementData)
-    return (elementData.data.playerIsOwner and elementData.data.isBlizzardLoadout) and "Load & Apply"
-        or Config:GetConfig('autoApply') and "Load & Apply"
-        or "Load";
+    return (elementData.data.playerIsOwner and elementData.data.isBlizzardLoadout) and L["Load & Apply"]
+        or Config:GetConfig('autoApply') and L["Load & Apply"]
+        or L["Load"];
 end
 
 function Module:GetExportString()

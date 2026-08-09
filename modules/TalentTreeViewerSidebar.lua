@@ -1,5 +1,7 @@
 local addonName, ns = ...;
 
+local L = ns.L;
+
 --- @class TalentLoadoutManager
 local TLM = ns.TLM;
 
@@ -44,7 +46,7 @@ function Module:SetupHook()
 end
 
 function Module:GetDefaultActionText(elementData)
-    return "Load";
+    return L["Load"];
 end
 
 function Module:GetExportString()

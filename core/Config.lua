@@ -1,5 +1,7 @@
 local addonName, ns = ...;
 
+local L = ns.L;
+
 --- @type TalentLoadoutManager
 local TLM = ns.TLM;
 
@@ -80,75 +82,72 @@ function Config:GetOptions()
             version = {
                 order = orderCount(),
                 type = "description",
-                name = "Version: " .. self.version,
+                name = L["Version:"] .. " " .. self.version,
             },
             levelingBuildDescription = {
                 order = orderCount(),
                 type = "description",
-                name =
-[[TalentLoadoutManager supports importing leveling builds, through any import string or ingame link that includes leveling info, or through IcyVeins calculator links.
-You can create a leveling build yourself, either using the IcyVeins talent calculator, or ingame, using the Talent Tree Viewer addon
-]],
+                name = L["TalentLoadoutManager supports importing leveling builds, through any import string or ingame link that includes leveling info, or through IcyVeins calculator links.\nYou can create a leveling build yourself, either using the IcyVeins talent calculator, or ingame, using the Talent Tree Viewer addon\n"],
             },
             autoApplyOnLevelUp = {
                 order = orderCount(),
                 type = "toggle",
-                name = "Auto Re-Apply Loadout on Level Up",
-                desc = "Automatically re-apply your current talent loadout when you level up.",
+                name = L["Auto Re-Apply Loadout on Level Up"],
+                desc = L["Automatically re-apply your current talent loadout when you level up."],
                 descStyle = "inline",
                 width = "full",
             },
             autoScale = {
                 order = orderCount(),
                 type = "toggle",
-                name = "Auto Scale",
-                desc = "Automatically scale the talent frame to fit the screen. (disabled if BlizzMove or TalentTreeTweaks is loaded)",
+                name = L["Auto Scale"],
+                desc = L["Automatically scale the talent frame to fit the screen. (disabled if BlizzMove or TalentTreeTweaks is loaded)"],
                 descStyle = "inline",
                 width = "full",
             },
             autoPosition = {
                 order = orderCount(),
                 type = "toggle",
-                name = "Auto Position",
-                desc = "Automatically reposition the talent frame to the center of the screen.",
+                name = L["Auto Position"],
+                desc = L["Automatically reposition the talent frame to the center of the screen."],
                 descStyle = "inline",
                 width = "full",
             },
             autoApply = {
                 order = orderCount(),
                 type = "toggle",
-                name = "Auto Apply",
-                desc = "Automatically apply the talent loadout when you import or switch talents.",
+                name = L["Auto Apply"],
+                desc = L["Automatically apply the talent loadout when you import or switch talents."],
                 descStyle = "inline",
                 width = "full",
             },
             integrateWithSimc = {
                 order = orderCount(),
                 type = "toggle",
-                name = "Add to SimC",
-                desc = "Automatically add custom talent loadouts to the SimulationCraft addon when /simc is used.",
+                name = L["Add to SimC"],
+                desc = L["Automatically add custom talent loadouts to the SimulationCraft addon when /simc is used."],
                 descStyle = "inline",
                 width = "full",
             },
             resetCharacterVisibility = {
                 order = orderCount(),
                 type = "execute",
-                name = "Reset Hidden Characters",
-                desc = "Resets characters whose loadouts were hidden in the sidebar.",
+                name = L["Reset Hidden Characters"],
+                desc = L["Resets characters whose loadouts were hidden in the sidebar."],
                 func = function() self:ClearCharacterVisibility(); end,
                 width = "double",
             },
             sideBarColors = {
                 order = orderCount(),
                 type = "description",
-                name = "Sidebar Colors",
+                name = L["Sidebar Colors"],
                 width = "full",
             },
             sideBarActiveElementTextColor = {
                 order = orderCount(),
                 type = 'color',
-                name = 'Selected Loadout Text',
-                desc = 'The text color of the selected loadout in the side bar.',
+                name = L['Selected Loadout Text'],
+                desc = L['The text color of the selected loadout in the side bar.'],
                 set = SetColor,
                 get = GetColor,
                 hasAlpha = true,
@@ -156,8 +155,8 @@ You can create a leveling build yourself, either using the IcyVeins talent calcu
             sideBarActiveElementBackgroundColor = {
                 order = orderCount(),
                 type = 'color',
-                name = 'Selected Loadout Background',
-                desc = 'The background color of the selected loadout in the side bar.',
+                name = L['Selected Loadout Background'],
+                desc = L['The background color of the selected loadout in the side bar.'],
                 set = SetColor,
                 get = GetColor,
                 hasAlpha = true,
@@ -165,8 +164,8 @@ You can create a leveling build yourself, either using the IcyVeins talent calcu
             sideBarActiveElementHighlightBackgroundColor = {
                 order = orderCount(),
                 type = 'color',
-                name = 'Selected Loadout Highlight',
-                desc = 'The background color of the selected loadout in the side bar when hovered.',
+                name = L['Selected Loadout Highlight'],
+                desc = L['The background color of the selected loadout in the side bar when hovered.'],
                 set = SetColor,
                 get = GetColor,
                 hasAlpha = true,
@@ -174,8 +173,8 @@ You can create a leveling build yourself, either using the IcyVeins talent calcu
             sideBarInactiveElementTextColor = {
                 order = orderCount(),
                 type = 'color',
-                name = 'Loadout Text',
-                desc = 'The text color of loadouts in the side bar.',
+                name = L['Loadout Text'],
+                desc = L['The text color of loadouts in the side bar.'],
                 set = SetColor,
                 get = GetColor,
                 hasAlpha = true,
@@ -183,8 +182,8 @@ You can create a leveling build yourself, either using the IcyVeins talent calcu
             sideBarInactiveElementBackgroundColor = {
                 order = orderCount(),
                 type = 'color',
-                name = 'Loadout Background',
-                desc = 'The background color of loadouts in the side bar.',
+                name = L['Loadout Background'],
+                desc = L['The background color of loadouts in the side bar.'],
                 set = SetColor,
                 get = GetColor,
                 hasAlpha = true,
@@ -192,8 +191,8 @@ You can create a leveling build yourself, either using the IcyVeins talent calcu
             sideBarInactiveElementHighlightBackgroundColor = {
                 order = orderCount(),
                 type = 'color',
-                name = 'Loadout Highlight',
-                desc = 'The background color of loadouts in the side bar when hovered.',
+                name = L['Loadout Highlight'],
+                desc = L['The background color of loadouts in the side bar when hovered.'],
                 set = SetColor,
                 get = GetColor,
                 hasAlpha = true,
@@ -201,8 +200,8 @@ You can create a leveling build yourself, either using the IcyVeins talent calcu
             sideBarBackgroundColor = {
                 order = orderCount(),
                 type = 'color',
-                name = 'Sidebar Background',
-                desc = 'The background color of the side bar.',
+                name = L['Sidebar Background'],
+                desc = L['The background color of the side bar.'],
                 set = SetColor,
                 get = GetColor,
                 hasAlpha = true,
@@ -210,8 +209,8 @@ You can create a leveling build yourself, either using the IcyVeins talent calcu
             resetAllColors = {
                 order = orderCount(),
                 type = "execute",
-                name = "Reset All Colors",
-                desc = "Reset all side bar colors to their defaults.",
+                name = L["Reset All Colors"],
+                desc = L["Reset all side bar colors to their defaults."],
                 func = function()
                     for _, key in pairs(self.sideBarColorOptionKeys) do
                         print(key, self.defaultConfig[key].r, self.defaultConfig[key].g, self.defaultConfig[key].b, self.defaultConfig[key].a);
