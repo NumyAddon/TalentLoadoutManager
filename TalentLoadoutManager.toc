@@ -4,6 +4,8 @@
 #@end-debug@
 ## Title: Talent Loadout Manager
 ## Author: Numy
+## X-GameType: [Game]
+## X-GameFamily: [Family]
 ## IconTexture: Interface\Addons\TalentLoadoutManager\media\icon
 ## Notes: Talent Loadout Manager
 ## Notes-ruRU: Менеджер наборов талантов
