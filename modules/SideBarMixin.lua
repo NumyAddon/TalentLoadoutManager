@@ -237,6 +237,7 @@ function SideBarMixin:SetupHook()
     if not self.importDialog then
         self.importDialog = self:CreateImportDialog();
     end
+    self:TryIntegrateWithEllesmereUI();
     local talentsTab = self:GetTalentsTab();
     self:SecureHookScript(talentsTab, "OnShow", "OnTalentsTabShow");
     self:SecureHook(talentsTab, "OnUpdate", "OnTalentsChanged");
@@ -698,6 +699,11 @@ function SideBarMixin:CreateSideBar()
         self:OnToggleSideBarButtonClick(mouseButton);
     end);
 
+    -- references on the talents tab mark both frames as addon-owned, so UI skins that sweep Blizzard's talent
+    -- frame (e.g. EllesmereUI) leave them alone, instead of flattening the toggle button's arrow texture
+    talentsTab.TalentLoadoutManager_SideBar = sideBar;
+    talentsTab.TalentLoadoutManager_ToggleSideBarButton = sideBar.ToggleSideBarButton;
+
     -- add a scrollbox frame
     local dataProvider
     sideBar.ScrollBoxContainer, dataProvider = self:CreateScrollBox(sideBar);
@@ -1158,6 +1164,86 @@ function SideBarMixin:TryIntegrateWithBlizzMove()
 
     local frameTable = self:GetBlizzMoveFrameTable();
     BlizzMoveAPI:RegisterAddOnFrames(frameTable);
+end
+
+do
+    -- EllesmereUI's skinning API (SKINNING_API.md in EllesmereUI). The callback fires once, at PLAYER_LOGIN,
+    -- and only if the user has skinning for this addon enabled; sidebars created before that wait in `pending`.
+    local skin;
+    local pending = {};
+    if EllesmereUI and EllesmereUI.RegisterSkin then ---@diagnostic disable-line: undefined-global
+        EllesmereUI.RegisterSkin(addonName, function(S) ---@diagnostic disable-line: undefined-global
+            skin = S;
+            for _, module in ipairs(pending) do module:ApplyEllesmereUISkin(S); end
+            pending = nil;
+        end);
+    end
+
+    function SideBarMixin:TryIntegrateWithEllesmereUI()
+        if self.ellesmereUISkinQueued then return; end
+        self.ellesmereUISkinQueued = true;
+        if skin then
+            self:ApplyEllesmereUISkin(skin);
+        elseif pending then
+            table.insert(pending, self);
+        end
+    end
+end
+
+function SideBarMixin:ApplyEllesmereUISkin(S)
+    local sideBar = self.SideBar;
+    for _, button in ipairs({ sideBar.CreateButton, sideBar.ImportButton, sideBar.SaveButton, sideBar.ConfigButton }) do
+        S.Button(button);
+        S.StateButtonLabel(button); -- SaveButton is disabled when there is nothing to save
+    end
+    -- the toggle's arrow is its Normal/HighlightTexture, which S.Button would fade unless kept by key
+    local toggleButton = sideBar.ToggleSideBarButton;
+    toggleButton.Arrow = toggleButton:GetNormalTexture();
+    toggleButton.ArrowHighlight = toggleButton:GetHighlightTexture();
+    S.Button(toggleButton, { "Arrow", "ArrowHighlight" });
+
+    local dialog = self.importDialog;
+    S.Shell(dialog);
+    if dialog.Border then dialog.Border:SetAlpha(0); end
+    local title = dialog.Title or (dialog.TitleContainer and dialog.TitleContainer.TitleText) or dialog.TitleText;
+    if title then
+        S.Font(title);
+        S.White(title);
+        -- seat the title on the shell's 25px top bar
+        title:ClearAllPoints();
+        title:SetPoint("CENTER", dialog, "TOP", 0, -11.5);
+    end
+    for _, button in ipairs({ dialog.AcceptButton, dialog.CancelButton }) do
+        S.Button(button);
+        S.StateButtonLabel(button); -- AcceptButton is disabled until a string and name are entered
+    end
+    S.Panel(dialog.ImportControl.InputContainer);
+    -- AutoApplyCheckbox only exists when the module implements auto apply
+    for _, key in ipairs({ "AutoApplyCheckbox", "ImportIntoCurrentLoadoutCheckbox" }) do
+        local checkbox = dialog[key];
+        if checkbox then
+            S.Checkbox(checkbox);
+            S.White(checkbox.text);
+        end
+    end
+
+    -- name input: 15px lower and 20px shorter, to clear the shell's top bar spacing
+    local editBox = dialog.NameControl.EditBox;
+    S.EditBox(editBox);
+    local points, hasBottom = {}, false;
+    for i = 1, editBox:GetNumPoints() do
+        local point, relativeTo, relativePoint, x, y = editBox:GetPoint(i);
+        if point:find("BOTTOM") then
+            hasBottom = true;
+            points[i] = { point, relativeTo, relativePoint, x, y + 5 };
+        else
+            points[i] = { point, relativeTo, relativePoint, x, y - 15 };
+        end
+    end
+    editBox:ClearAllPoints();
+    for _, p in ipairs(points) do editBox:SetPoint(unpack(p)); end
+    local height = editBox:GetHeight();
+    if not hasBottom and height > 20 then editBox:SetHeight(height - 20); end
 end
 
 function SideBarMixin:TryShowLoadoutCompleteAnimation()

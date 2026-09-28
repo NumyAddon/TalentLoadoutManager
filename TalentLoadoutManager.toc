@@ -14,7 +14,7 @@
 ## X-Wago-ID: ZKbeD961
 ## SavedVariables: TalentLoadoutManagerDB
 ## SavedVariablesPerCharacter: TalentLoadoutManagerCharDB
-## OptionalDeps: TalentTreeTweaks,Simulationcraft,BlizzMove
+## OptionalDeps: TalentTreeTweaks,Simulationcraft,BlizzMove,EllesmereUI
 ## Category-enUS: Combat
 ## Category-deDE: Kampf
 ## Category-esES: Combate
