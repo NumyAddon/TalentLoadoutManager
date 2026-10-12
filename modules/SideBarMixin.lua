@@ -17,6 +17,8 @@ local API = TalentLoadoutManagerAPI;
 local GlobalAPI = TalentLoadoutManagerAPI.GlobalAPI;
 local CharacterAPI = TalentLoadoutManagerAPI.CharacterAPI;
 
+local TLM = ns.TLM;
+
 SideBarMixin.IntegrateWithBlizzMove = true;
 SideBarMixin.ImplementAutoApply = false;
 SideBarMixin.ShowAnimationOnImport = false;
@@ -24,14 +26,19 @@ SideBarMixin.ImplementTTTMissingWarning = false;
 SideBarMixin.ShowLoadAndApply = false;
 SideBarMixin.ShowShowInTTV = false;
 
-local LEVEL_CAP = 70;
+local LEVEL_CAP = 80;
 local SETTING_SUFFIX_COLLAPSED = "_Collapsed";
 local SETTING_SUFFIX_ANCHOR_LOCATION = "_AnchorLocation";
-local ANCHOR_LEFT_OUTER = 0;
-local ANCHOR_RIGHT_OUTER = 1;
-local ANCHOR_LEFT_INNER = 2;
-local ANCHOR_RIGHT_INNER = 3;
 local LOCK_MARKUP = CreateAtlasMarkup("AdventureMapIcon-Lock", 16, 16) .. " ";
+
+SideBarMixin.Enum = {}
+--- @enum TLM_SideBar.Enum.AnchorLocation
+SideBarMixin.Enum.AnchorLocation = {
+    LeftOuter = 0,
+    RightOuter = 1,
+    LeftInner = 2,
+    RightInner = 3,
+};
 
 function SideBarMixin:OnInitialize()
     local loadoutNameSubText = L["Anything before the first '||' character will not display. This allows you to sort loadouts by adding a prefix."];
@@ -213,6 +220,8 @@ function SideBarMixin:OnInitialize()
         hideOnEscape = true,
         preferredIndex = 3,
     };
+
+    TLM.sideBars[self.name] = self;
 end
 
 function SideBarMixin:OnEnable()
@@ -237,6 +246,9 @@ function SideBarMixin:SetupHook()
     if not self.importDialog then
         self.importDialog = self:CreateImportDialog();
     end
+
+    TLM:TriggerEvent(TLM.Event.SideBarLoaded, self.name, self);
+
     local talentsTab = self:GetTalentsTab();
     self:SecureHookScript(talentsTab, "OnShow", "OnTalentsTabShow");
     self:SecureHook(talentsTab, "OnUpdate", "OnTalentsChanged");
@@ -357,7 +369,7 @@ function SideBarMixin:UpdatePosition(frame)
 
     local anchorLocation = self:GetAnchorLocation();
 
-    local offsetDirection = (anchorLocation == ANCHOR_LEFT_OUTER and 1) or (anchorLocation == ANCHOR_RIGHT_OUTER and -1) or 0;
+    local offsetDirection = (anchorLocation == self.Enum.AnchorLocation.LeftOuter and 1) or (anchorLocation == self.Enum.AnchorLocation.RightOuter and -1) or 0;
     local replacePoint = true;
     local xOffset = (self.SideBar:GetWidth() / 2) * offsetDirection;
     local yOffset = -41;
@@ -523,24 +535,25 @@ end
 
 --- @param mouseButton MouseButton
 function SideBarMixin:OnToggleSideBarButtonClick(mouseButton)
+    local anchorLocationEnum = self.Enum.AnchorLocation;
     if IsShiftKeyDown() then
         local newAnchorMap = {
-            [ANCHOR_LEFT_OUTER] = ANCHOR_RIGHT_OUTER,
-            [ANCHOR_RIGHT_OUTER] = ANCHOR_LEFT_OUTER,
-            [ANCHOR_LEFT_INNER] = ANCHOR_RIGHT_INNER,
-            [ANCHOR_RIGHT_INNER] = ANCHOR_LEFT_INNER,
+            [anchorLocationEnum.LeftOuter] = anchorLocationEnum.RightOuter,
+            [anchorLocationEnum.RightOuter] = anchorLocationEnum.LeftOuter,
+            [anchorLocationEnum.LeftInner] = anchorLocationEnum.RightInner,
+            [anchorLocationEnum.RightInner] = anchorLocationEnum.LeftInner,
         };
         local anchorLocation = self:GetAnchorLocation();
-        self:SetAnchorLocation(newAnchorMap[anchorLocation] or ANCHOR_LEFT_OUTER);
+        self:SetAnchorLocation(newAnchorMap[anchorLocation] or anchorLocationEnum.LeftOuter);
     elseif mouseButton == "RightButton" then
         local newAnchorMap = {
-            [ANCHOR_LEFT_INNER] = ANCHOR_LEFT_OUTER,
-            [ANCHOR_LEFT_OUTER] = ANCHOR_LEFT_INNER,
-            [ANCHOR_RIGHT_INNER] = ANCHOR_RIGHT_OUTER,
-            [ANCHOR_RIGHT_OUTER] = ANCHOR_RIGHT_INNER,
+            [anchorLocationEnum.LeftInner] = anchorLocationEnum.LeftOuter,
+            [anchorLocationEnum.LeftOuter] = anchorLocationEnum.LeftInner,
+            [anchorLocationEnum.RightInner] = anchorLocationEnum.RightOuter,
+            [anchorLocationEnum.RightOuter] = anchorLocationEnum.RightInner,
         };
         local anchorLocation = self:GetAnchorLocation();
-        self:SetAnchorLocation(newAnchorMap[anchorLocation] or ANCHOR_LEFT_OUTER);
+        self:SetAnchorLocation(newAnchorMap[anchorLocation] or anchorLocationEnum.LeftOuter);
     else
         local collapsed = not self:GetCollapsed();
         Config:SetConfig(self.name .. SETTING_SUFFIX_COLLAPSED, collapsed);
@@ -548,6 +561,7 @@ function SideBarMixin:OnToggleSideBarButtonClick(mouseButton)
     end
 end
 
+--- @param newAnchorLocation TLM_SideBar.Enum.AnchorLocation
 function SideBarMixin:SetAnchorLocation(newAnchorLocation)
     Config:SetConfig(self.name .. SETTING_SUFFIX_ANCHOR_LOCATION, newAnchorLocation);
     self:UpdatePointsForAnchorLocation();
@@ -558,8 +572,8 @@ function SideBarMixin:UpdatePointsForAnchorLocation()
     self.SideBar:ClearAllPoints();
     self.SideBar.ToggleSideBarButton:ClearAllPoints();
     local anchorLocation = self:GetAnchorLocation();
-    local isLeftSide = anchorLocation == ANCHOR_LEFT_INNER or anchorLocation == ANCHOR_LEFT_OUTER;
-    local isOuter = anchorLocation == ANCHOR_LEFT_OUTER or anchorLocation == ANCHOR_RIGHT_OUTER;
+    local isLeftSide = anchorLocation == self.Enum.AnchorLocation.LeftInner or anchorLocation == self.Enum.AnchorLocation.LeftOuter;
+    local isOuter = anchorLocation == self.Enum.AnchorLocation.LeftOuter or anchorLocation == self.Enum.AnchorLocation.RightOuter;
 
     local sideBarPoint, sideBarRelativePoint;
     if isLeftSide then
@@ -578,8 +592,9 @@ function SideBarMixin:UpdatePointsForAnchorLocation()
     self:UpdatePosition(talentsTab:GetParent());
 end
 
+--- @return TLM_SideBar.Enum.AnchorLocation
 function SideBarMixin:GetAnchorLocation()
-    return Config:GetConfig(self.name .. SETTING_SUFFIX_ANCHOR_LOCATION, ANCHOR_LEFT_OUTER);
+    return Config:GetConfig(self.name .. SETTING_SUFFIX_ANCHOR_LOCATION, self.Enum.AnchorLocation.LeftOuter);
 end
 
 function SideBarMixin:SetCollapsed(collapsed)
@@ -587,8 +602,8 @@ function SideBarMixin:SetCollapsed(collapsed)
     sideBar:SetShown(not collapsed);
     local anchorLocation = self:GetAnchorLocation();
     if
-        (not collapsed and (ANCHOR_LEFT_OUTER == anchorLocation or ANCHOR_RIGHT_INNER == anchorLocation))
-        or (collapsed and (ANCHOR_RIGHT_OUTER == anchorLocation or ANCHOR_LEFT_INNER == anchorLocation))
+        (not collapsed and (self.Enum.AnchorLocation.LeftOuter == anchorLocation or self.Enum.AnchorLocation.RightInner == anchorLocation))
+        or (collapsed and (self.Enum.AnchorLocation.RightOuter == anchorLocation or self.Enum.AnchorLocation.LeftInner == anchorLocation))
     then
         -- arrow pointing right
         sideBar.ToggleSideBarButton:GetNormalTexture():SetTexCoord(0.15625, 0.5, 0.84375, 0.5, 0.15625, 0, 0.84375, 0);
@@ -722,6 +737,99 @@ function SideBarMixin:CreateSideBar()
     return sideBar, dataProvider;
 end
 
+--- @param frame TLM_ElementFrame
+function SideBarMixin:ElementFrameApplyColors(frame)
+    local isSelected = (frame == self.activeLoadoutFrame);
+    --- @type ColorRGBAData
+    local textColor = isSelected
+        and Config:GetConfig('sideBarActiveElementTextColor')
+        or Config:GetConfig('sideBarInactiveElementTextColor');
+    --- @type ColorRGBAData
+    local backgroundColor = isSelected
+        and Config:GetConfig('sideBarActiveElementBackgroundColor')
+        or Config:GetConfig('sideBarInactiveElementBackgroundColor');
+    --- @type ColorRGBAData
+    local highlightBackgroundColor = isSelected
+        and Config:GetConfig('sideBarActiveElementHighlightBackgroundColor')
+        or Config:GetConfig('sideBarInactiveElementHighlightBackgroundColor');
+
+    frame.Text:SetTextColor(textColor.r, textColor.g, textColor.b, textColor.a);
+    frame.Background:SetColorTexture(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a);
+    frame.HighlightBackground:SetColorTexture(highlightBackgroundColor.r, highlightBackgroundColor.g, highlightBackgroundColor.b, highlightBackgroundColor.a);
+end
+
+--- @param frame TLM_ElementFrame
+--- @param entry TLM_SideBarDataProviderEntry
+function SideBarMixin:OnListElementInitialized(frame, entry)
+    --- @class TLM_ElementFrame
+    local frame = frame;
+    if not frame.Background then
+        frame.Background = frame:CreateTexture(nil, "BACKGROUND");
+        frame.Background:SetAllPoints(frame);
+    end
+
+    if not frame.Text then
+        frame.Text = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight");
+        frame.Text:SetJustifyH("LEFT");
+        frame.Text:SetAllPoints(frame);
+    end
+
+    if not frame.HighlightBackground then
+        frame.HighlightBackground = frame:CreateTexture(nil, "BACKGROUND");
+        frame.HighlightBackground:SetAllPoints(frame);
+        frame.HighlightBackground:Hide();
+    end
+
+    if entry.isActive then
+        self.activeLoadoutFrame = frame;
+    end
+    local text = entry.text;
+    if entry.data.isLocked then
+        text = LOCK_MARKUP .. text;
+    end
+    if entry.parentID then
+        text = "  ||  " .. text;
+    end
+    frame.Text:SetText(text);
+
+    self:ElementFrameApplyColors(frame);
+
+    Config:RegisterCallback(Config.Event.OptionValueChanged, function(_, option)
+        if Config.sideBarColorOptionKeys[option] then
+            self:ElementFrameApplyColors(frame);
+        end
+    end, frame);
+    frame:SetScript("OnClick", function(_, button)
+        if button == "LeftButton" then
+            self:OnElementClick(frame, entry.data);
+        elseif button == "RightButton" then
+            self:OnElementRightClick(frame, entry.data);
+        end
+    end);
+    frame:SetScript("OnEnter", function()
+        frame.TalentBuildExportString = nil;
+        GameTooltip:SetOwner(frame, "ANCHOR_RIGHT");
+        GameTooltip:SetText(entry.data.name);
+        local defaultAction = self:GetDefaultActionText(entry);
+        GameTooltip:AddLine(string.format(L["Left-Click to %s this loadout"], defaultAction), 1, 1, 1);
+        GameTooltip:AddLine(L["Shift-Click to link to chat"], 1, 1, 1);
+        GameTooltip:AddLine(L["Right-Click for options"], 1, 1, 1);
+
+        -- Allows other addons, like TalentTreeTweaks to safely hook into GameTooltip:Show
+        frame.TalentBuildExportString = GlobalAPI:GetExportString(entry.data.id);
+
+        GameTooltip:Show();
+
+        frame.HighlightBackground:Show();
+    end);
+    frame:SetScript("OnLeave", function()
+        GameTooltip:Hide();
+
+        frame.HighlightBackground:Hide();
+    end);
+    frame:RegisterForClicks("AnyUp");
+end
+
 function SideBarMixin:CreateScrollBox(parentContainer)
     --- @class TLM_SideBarContainerFrame : Frame
     local ContainerFrame = CreateFrame("Frame", nil, parentContainer);
@@ -733,103 +841,10 @@ function SideBarMixin:CreateScrollBox(parentContainer)
     ContainerFrame.ScrollBox = CreateFrame("Frame", nil, ContainerFrame, "WowScrollBoxList");
     ContainerFrame.ScrollBox:SetPoint("TOPLEFT");
     ContainerFrame.ScrollBox:SetPoint("BOTTOMRIGHT", ContainerFrame.ScrollBar, "BOTTOMLEFT");
-    --- @param frame TLM_ElementFrame
-    local function elementFrameApplyColors(frame)
-        local isSelected = (frame == self.activeLoadoutFrame);
-        --- @type ColorType
-        local textColor = isSelected
-            and Config:GetConfig('sideBarActiveElementTextColor')
-            or Config:GetConfig('sideBarInactiveElementTextColor');
-        --- @type ColorType
-        local backgroundColor = isSelected
-            and Config:GetConfig('sideBarActiveElementBackgroundColor')
-            or Config:GetConfig('sideBarInactiveElementBackgroundColor');
-        --- @type ColorType
-        local highlightBackgroundColor = isSelected
-            and Config:GetConfig('sideBarActiveElementHighlightBackgroundColor')
-            or Config:GetConfig('sideBarInactiveElementHighlightBackgroundColor');
-
-        frame.Text:SetTextColor(textColor.r, textColor.g, textColor.b, textColor.a);
-        frame.Background:SetColorTexture(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a);
-        frame.HighlightBackground:SetColorTexture(highlightBackgroundColor.r, highlightBackgroundColor.g, highlightBackgroundColor.b, highlightBackgroundColor.a);
-    end
-
-    --- @param frame TLM_ElementFrame
-    --- @param entry TLM_SideBarDataProviderEntry
-    local function OnListElementInitialized(frame, entry)
-        --- @class TLM_ElementFrame
-        local frame = frame;
-        if not frame.Background then
-            frame.Background = frame:CreateTexture(nil, "BACKGROUND");
-            frame.Background:SetAllPoints(frame);
-        end
-
-        if not frame.Text then
-            frame.Text = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight");
-            frame.Text:SetJustifyH("LEFT");
-            frame.Text:SetAllPoints(frame);
-        end
-
-        if not frame.HighlightBackground then
-            frame.HighlightBackground = frame:CreateTexture(nil, "BACKGROUND");
-            frame.HighlightBackground:SetAllPoints(frame);
-            frame.HighlightBackground:Hide();
-        end
-
-        if entry.isActive then
-            self.activeLoadoutFrame = frame;
-        end
-        local text = entry.text;
-        if entry.data.isLocked then
-            text = LOCK_MARKUP .. text;
-        end
-        if entry.parentID then
-            text = "  ||  " .. text;
-        end
-        frame.Text:SetText(text);
-
-        frame.ApplyColors = elementFrameApplyColors;
-        frame:ApplyColors();
-
-        Config:RegisterCallback(Config.Event.OptionValueChanged, function(_, option)
-            if Config.sideBarColorOptionKeys[option] then
-                frame:ApplyColors();
-            end
-        end, frame);
-        frame:SetScript("OnClick", function(_, button)
-            if button == "LeftButton" then
-                self:OnElementClick(frame, entry.data);
-            elseif button == "RightButton" then
-                self:OnElementRightClick(frame, entry.data);
-            end
-        end);
-        frame:SetScript("OnEnter", function()
-            frame.TalentBuildExportString = nil;
-            GameTooltip:SetOwner(frame, "ANCHOR_RIGHT");
-            GameTooltip:SetText(entry.data.name);
-            local defaultAction = self:GetDefaultActionText(entry);
-            GameTooltip:AddLine(string.format(L["Left-Click to %s this loadout"], defaultAction), 1, 1, 1);
-            GameTooltip:AddLine(L["Shift-Click to link to chat"], 1, 1, 1);
-            GameTooltip:AddLine(L["Right-Click for options"], 1, 1, 1);
-
-            -- Allows other addons, like TalentTreeTweaks to safely hook into GameTooltip:Show
-            frame.TalentBuildExportString = GlobalAPI:GetExportString(entry.data.id);
-
-            GameTooltip:Show();
-
-            frame.HighlightBackground:Show();
-        end);
-        frame:SetScript("OnLeave", function()
-            GameTooltip:Hide();
-
-            frame.HighlightBackground:Hide();
-        end);
-        frame:RegisterForClicks("AnyUp");
-    end
 
     ContainerFrame.ScrollView = CreateScrollBoxListLinearView();
     ContainerFrame.ScrollView:SetElementExtent(20); -- Fixed height for each row; required as we're not using XML.
-    ContainerFrame.ScrollView:SetElementInitializer("Button", OnListElementInitialized);
+    ContainerFrame.ScrollView:SetElementInitializer("Button", function(frame, entry) self:OnListElementInitialized(frame, entry); end);
 
     ScrollUtil.InitScrollBoxWithScrollBar(ContainerFrame.ScrollBox, ContainerFrame.ScrollBar, ContainerFrame.ScrollView)
 
@@ -941,9 +956,9 @@ function SideBarMixin:SetElementAsActive(frame, loadoutInfo)
     local previouslyActiveLoadoutFrame = self.activeLoadoutFrame;
     self.activeLoadoutFrame = frame;
     if previouslyActiveLoadoutFrame then
-        previouslyActiveLoadoutFrame:ApplyColors();
+        self:ElementFrameApplyColors(previouslyActiveLoadoutFrame);
     end
-    frame:ApplyColors();
+    self:ElementFrameApplyColors(frame);
     self:SaveButtonUpdateEnableState();
 end
 
@@ -1109,7 +1124,7 @@ function SideBarMixin:RefreshSideBarData()
     local previouslyActiveLoadoutFrame = self.activeLoadoutFrame;
     self.activeLoadoutFrame = nil;
     if previouslyActiveLoadoutFrame then
-        previouslyActiveLoadoutFrame:ApplyColors();
+        self:ElementFrameApplyColors(previouslyActiveLoadoutFrame);
     end
 
     self.activeLoadout = self:GetActiveLoadout(true);

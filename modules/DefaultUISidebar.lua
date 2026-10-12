@@ -28,9 +28,6 @@ Module.ShowLoadAndApply = true;
 Module.ShowShowInTTV = true;
 
 function Module:OnEnable()
-    EventUtil.ContinueOnAddOnLoaded("Blizzard_ClassTalentUI", function()
-        self:SetupHook();
-    end);
     EventUtil.ContinueOnAddOnLoaded("Blizzard_PlayerSpells", function()
         self:SetupHook();
     end);

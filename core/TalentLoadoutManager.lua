@@ -42,6 +42,8 @@ TLM.Event = {
     LoadoutUpdated = "LoadoutUpdated",
     --- payload: <none>
     LoadoutListUpdated = "LoadoutListUpdated",
+    --- payload: sideBarName, sideBar
+    SideBarLoaded = "SideBarLoaded",
 };
 
 do
@@ -77,6 +79,8 @@ function TLM:OnInitialize()
         orderedTreeNodes = {},
         spellNodeMap = {},
     };
+    --- @type table<string, TLM_SideBarMixin> # [sideBarName] = sideBar
+    self.sideBars = {};
 
     local defaults = {
         blizzardLoadouts = {},
@@ -99,6 +103,12 @@ function TLM:OnInitialize()
     self.charDb.selectedCustomLoadoutID = self.charDb.selectedCustomLoadoutID or {};
 
     self:RegisterEvent("TRAIT_CONFIG_LIST_UPDATED");
+end
+
+--- @param sideBarName string
+--- @return TLM_SideBarMixin? # nil if not found
+function TLM:GetSideBar(sideBarName)
+    return self.sideBars[sideBarName];
 end
 
 function TLM:TRAIT_CONFIG_LIST_UPDATED()
