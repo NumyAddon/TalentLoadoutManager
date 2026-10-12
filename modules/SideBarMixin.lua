@@ -26,7 +26,6 @@ SideBarMixin.ImplementTTTMissingWarning = false;
 SideBarMixin.ShowLoadAndApply = false;
 SideBarMixin.ShowShowInTTV = false;
 
-local LEVEL_CAP = 80;
 local SETTING_SUFFIX_COLLAPSED = "_Collapsed";
 local SETTING_SUFFIX_ANCHOR_LOCATION = "_AnchorLocation";
 local LOCK_MARKUP = CreateAtlasMarkup("AdventureMapIcon-Lock", 16, 16) .. " ";
@@ -1003,7 +1002,7 @@ function SideBarMixin:LinkToChat(loadoutId)
     local className = talentsTab:GetClassName();
     local specID = talentsTab:GetSpecID();
     local classColor = RAID_CLASS_COLORS[select(2, GetClassInfo(talentsTab:GetClassID()))];
-    local level = LEVEL_CAP;
+    local level = ns.MAX_LEVEL;
 
     local linkDisplayText = ("[%s]"):format(TALENT_BUILD_CHAT_LINK_TEXT:format(specName, className));
     local linkText = LinkUtil.FormatLink("talentbuild", linkDisplayText, specID, level, exportString);
